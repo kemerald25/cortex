@@ -217,3 +217,39 @@ as $$
   order by chunks.embedding <=> query_embedding
   limit match_count;
 $$;
+
+-- Create buckets if they don't exist
+insert into storage.buckets (id, name, public)
+values 
+  ('materials', 'materials', false),
+  ('additions', 'additions', false)
+on conflict (id) do nothing;
+
+-- Set up RLS policies for storage objects
+create policy "Allow authenticated users to upload materials" on storage.objects
+  for insert with check (
+    bucket_id = 'materials' 
+    and auth.role() = 'authenticated'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "Allow authenticated users to read own materials" on storage.objects
+  for select using (
+    bucket_id = 'materials'
+    and auth.role() = 'authenticated'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "Allow authenticated users to upload additions" on storage.objects
+  for insert with check (
+    bucket_id = 'additions' 
+    and auth.role() = 'authenticated'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "Allow authenticated users to read own additions" on storage.objects
+  for select using (
+    bucket_id = 'additions'
+    and auth.role() = 'authenticated'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );

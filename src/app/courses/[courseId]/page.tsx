@@ -90,7 +90,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
       if (!user) throw new Error('User not authenticated');
 
       const fileExt = selectedFile.name.split('.').pop();
-      const storagePath = `materials/${user.id}/${Date.now()}.${fileExt}`;
+      const storagePath = `${user.id}/${Date.now()}.${fileExt}`;
 
       // 1. Upload to Supabase Storage
       const { error: storageError } = await supabase.storage

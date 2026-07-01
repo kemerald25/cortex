@@ -162,7 +162,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
       if (additionFile) {
         // Upload photo first
         const fileExt = additionFile.name.split('.').pop();
-        filePath = `additions/${user.id}/${Date.now()}.${fileExt}`;
+        filePath = `${user.id}/${Date.now()}.${fileExt}`;
         const { error: storageError } = await supabase.storage
           .from('additions')
           .upload(filePath, additionFile);
