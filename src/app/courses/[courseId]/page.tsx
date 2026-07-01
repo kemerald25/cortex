@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { 
   FileText, Upload, Plus, Sparkles, AlertCircle, 
-  Trash2, Edit3, ArrowUp, ArrowDown, Check, Save 
+  Trash2, Edit3, ArrowUp, ArrowDown, Check, Save, ChevronLeft 
 } from 'lucide-react';
 
 export default function CourseDetailsPage({ params }: { params: Promise<{ courseId: string }> }) {
@@ -238,8 +238,15 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
 
   return (
     <div className="space-y-6">
-      {/* Course Info */}
+      {/* Back Button + Course Info */}
       <div className="space-y-1">
+        <button
+          onClick={() => router.push('/courses')}
+          className="flex items-center gap-1 text-slate-400 hover:text-white text-xs font-semibold mb-2 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>All Courses</span>
+        </button>
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">{course?.code}</span>
           <span className="w-1 h-1 bg-slate-700 rounded-full"></span>

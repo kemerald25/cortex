@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { calculateSM2 } from '@/utils/srs';
 import { 
   Sparkles, MessageSquare, Plus, CheckCircle, Image, 
-  Trash2, HelpCircle, Eye, EyeOff, RotateCw, X, ChevronRight, Send
+  Trash2, HelpCircle, Eye, EyeOff, RotateCw, X, ChevronRight, Send, ChevronLeft
 } from 'lucide-react';
 
 export default function TopicDetailsPage({ params }: { params: Promise<{ courseId: string; topicId: string }> }) {
@@ -334,6 +334,13 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
     <div className="space-y-6 relative pb-10">
       {/* Title */}
       <div className="space-y-1">
+        <button
+          onClick={() => router.push(`/courses/${courseId}`)}
+          className="flex items-center gap-1 text-slate-400 hover:text-white text-xs font-semibold mb-2 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Back to Course</span>
+        </button>
         <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">
           Course Syllabus Topic
         </span>
@@ -407,8 +414,15 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
               {/* Process / Logic */}
               <div className="space-y-2.5">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">Process / Logic</h3>
-                <div className="p-4 bg-slate-900/20 border border-slate-900 rounded-2xl text-slate-300 text-xs whitespace-pre-line prose prose-invert">
-                  {note.process_logic}
+                <div className="p-4 bg-slate-900/20 border border-slate-900 rounded-2xl space-y-2">
+                  {(Array.isArray(note.process_logic)
+                    ? note.process_logic
+                    : (() => { try { return JSON.parse(note.process_logic); } catch { return [note.process_logic]; } })()
+                  ).map((line: string, i: number) => (
+                    <p key={i} className="text-slate-300 text-xs leading-relaxed">
+                      {line.replace(/\*\*(.*?)\*\*/g, '$1').trim()}
+                    </p>
+                  ))}
                 </div>
               </div>
 
@@ -427,7 +441,16 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
                   <HelpCircle className="w-3.5 h-3.5" /> Common Exam Angles
                 </span>
-                <p className="text-slate-300 text-xs whitespace-pre-line leading-relaxed">{note.exam_angles}</p>
+                <div className="space-y-2">
+                  {(Array.isArray(note.exam_angles)
+                    ? note.exam_angles
+                    : (() => { try { return JSON.parse(note.exam_angles); } catch { return [note.exam_angles]; } })()
+                  ).map((line: string, i: number) => (
+                    <p key={i} className="text-slate-300 text-xs leading-relaxed">
+                      {line.replace(/\*\*(.*?)\*\*/g, '$1').trim()}
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
@@ -714,18 +737,18 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
         </div>
       )}
 
-      {/* Floating Grounded Chat Button */}
+      {/* Floating Grounded Chat Button — lifted above bottom nav */}
       <button
         onClick={() => setShowChat(true)}
-        className="fixed bottom-24 right-6 md:absolute md:bottom-6 md:right-6 p-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl shadow-indigo-600/35 transition-all flex items-center justify-center border border-indigo-550/30 scale-100 hover:scale-105 active:scale-95 z-40"
+        className="fixed bottom-28 right-6 p-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl shadow-indigo-600/35 transition-all flex items-center justify-center border border-indigo-550/30 scale-100 hover:scale-105 active:scale-95 z-40"
       >
         <MessageSquare className="w-6 h-6" />
       </button>
 
       {/* Grounded Chat Bottom Sheet / Modal */}
       {showChat && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center md:items-center p-4">
-          <div className="bg-slate-950 border border-slate-850 w-full max-w-sm rounded-t-3xl md:rounded-3xl h-[80vh] md:h-[600px] flex flex-col justify-between overflow-hidden animate-in slide-in-from-bottom duration-250">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center p-4 pb-[80px]">
+          <div className="bg-slate-950 border border-slate-850 w-full max-w-sm rounded-t-3xl h-[75vh] flex flex-col justify-between overflow-hidden animate-in slide-in-from-bottom duration-250">
             {/* Chat Header */}
             <div className="px-5 py-4 border-b border-slate-905 flex justify-between items-center bg-slate-900/30">
               <div>
