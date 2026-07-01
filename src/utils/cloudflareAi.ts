@@ -56,7 +56,8 @@ export async function getEmbedding(text: string): Promise<number[]> {
 export async function generateText(
   systemPrompt: string,
   userPrompt: string,
-  temperature: number = 0.6
+  temperature: number = 0.6,
+  maxTokens: number = 2048
 ): Promise<string> {
   try {
     const result = await callCloudflareAi('@cf/meta/llama-3.1-8b-instruct-fast', {
@@ -65,6 +66,7 @@ export async function generateText(
         { role: 'user', content: userPrompt },
       ],
       temperature,
+      max_tokens: maxTokens,
     });
     return result?.response || '';
   } catch (error: any) {
@@ -80,16 +82,34 @@ export async function generateJson(
   systemPrompt: string,
   userPrompt: string
 ): Promise<any> {
-  const systemWithJson = `${systemPrompt}\nIMPORTANT: You must respond ONLY with a raw JSON object. Do not include markdown code block styling (\`\`\`json or \`\`\`), markdown wrapper formatting, or any extra text. Your output must be directly parseable by JSON.parse().`;
+  const systemWithJson = `${systemPrompt}\nIMPORTANT: You must respond ONLY with a raw JSON array or object. Do not include markdown code block styling, preamble, or any extra text. Your output must be directly parseable by JSON.parse().`;
   
-  const text = await generateText(systemWithJson, userPrompt, 0.2);
+  // Use 4096 max tokens to avoid truncation on larger responses
+  const text = await generateText(systemWithJson, userPrompt, 0.2, 4096);
   
+  // Strip any markdown fences
+  const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+  // 1. Try direct parse
   try {
-    // Try parsing directly
-    const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanText);
-  } catch (error) {
-    console.error('Failed to parse AI response as JSON. Raw response:', text);
-    throw new Error('AI response was not valid JSON.');
-  }
+  } catch (_) {}
+
+  // 2. If the model returned a truncated array, try to recover the last complete item
+  // Find the last complete JSON object boundary: last `},` or `}` before the truncation
+  try {
+    if (cleanText.trimStart().startsWith('[')) {
+      // Find last complete object by looking for the last `}` followed by optional whitespace then `,` or end of array
+      const lastCompleteIdx = cleanText.lastIndexOf('},');
+      if (lastCompleteIdx !== -1) {
+        const recovered = cleanText.substring(0, lastCompleteIdx + 1) + ']';
+        const parsed = JSON.parse(recovered);
+        console.warn(`Recovered ${parsed.length} items from truncated AI JSON response.`);
+        return parsed;
+      }
+    }
+  } catch (_) {}
+
+  console.error('Failed to parse AI response as JSON. Raw response:', text);
+  throw new Error('AI response was not valid JSON.');
 }
