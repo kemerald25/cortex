@@ -68,7 +68,11 @@ export async function generateText(
       temperature,
       max_tokens: maxTokens,
     });
-    return result?.response || '';
+    // Safely coerce to string — result.response can sometimes be an object
+    const raw = result?.response;
+    if (typeof raw === 'string') return raw;
+    if (raw == null) return '';
+    return JSON.stringify(raw);
   } catch (error: any) {
     console.error('Error generating text:', error);
     throw new Error(`Text generation failed: ${error.message}`);
@@ -87,6 +91,11 @@ export async function generateJson(
   // Use 4096 max tokens to avoid truncation on larger responses
   const text = await generateText(systemWithJson, userPrompt, 0.2, 4096);
   
+  // If generateText already returned a non-string (e.g. model returned object directly), use it
+  if (typeof text !== 'string') {
+    return text;
+  }
+
   // Strip any markdown fences
   const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
