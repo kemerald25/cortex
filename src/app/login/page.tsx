@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, BookOpen } from 'lucide-react';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function LoginPage() {
       {/* Top Section */}
       <div className="flex-1 flex flex-col justify-center items-center gap-2">
         <div className="p-4 bg-indigo-600/10 rounded-2xl border border-indigo-500/20 text-indigo-400">
-          <BookOpen className="w-12 h-12" />
+          <Image src="/logo.svg" alt="CortexLogo" width={48} height={48} className="w-12 h-12" />
         </div>
         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent mt-2">
           Cortex
