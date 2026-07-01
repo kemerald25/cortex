@@ -1,7 +1,7 @@
-const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-
 async function callCloudflareAi(model: string, body: any): Promise<any> {
+  const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+
   if (!ACCOUNT_ID || !API_TOKEN) {
     throw new Error('Cloudflare AI configuration is missing. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.');
   }
