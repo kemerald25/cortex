@@ -6,7 +6,7 @@ import './globals.css';
 // Using a gorgeous modern font Outfit
 const outfit = Outfit({
   subsets: ['latin'],
-  weight: ['300', '400', '550', '600', '700', '800'],
+  weight: ['300', '400', '500', '600', '700', '800'],
   variable: '--font-outfit',
 });
 
