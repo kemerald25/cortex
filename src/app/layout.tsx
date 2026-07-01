@@ -11,7 +11,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: 'Cortex - Active Recall Study App',
+  title: 'Cortex - read once, remember always',
   description: 'Turn your PDF, DOCX, and handwritten study materials into reviewable notes and flashcards with spaced repetition.',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
 };
