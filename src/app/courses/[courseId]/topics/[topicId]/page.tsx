@@ -747,7 +747,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
 
       {/* Grounded Chat Bottom Sheet / Modal */}
       {showChat && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center p-4 pb-[80px]">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-end justify-center p-4 pb-4">
           <div className="bg-slate-950 border border-slate-850 w-full max-w-sm rounded-t-3xl h-[75vh] flex flex-col justify-between overflow-hidden animate-in slide-in-from-bottom duration-250">
             {/* Chat Header */}
             <div className="px-5 py-4 border-b border-slate-905 flex justify-between items-center bg-slate-900/30">

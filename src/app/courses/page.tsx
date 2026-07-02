@@ -136,7 +136,7 @@ export default function CoursesPage() {
 
       {/* Add Course Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center md:items-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-end justify-center md:items-center p-4">
           <div className="bg-slate-950 border border-slate-850 w-full max-w-sm rounded-t-3xl md:rounded-3xl p-6 space-y-6 animate-in slide-in-from-bottom duration-250">
             {/* Modal Header */}
             <div className="flex justify-between items-center">
