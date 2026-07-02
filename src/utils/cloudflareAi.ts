@@ -96,8 +96,28 @@ export async function generateJson(
     return text;
   }
 
-  // Strip any markdown fences
-  const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  // Robustly extract JSON block (ignoring preambles, postambles, or markdown fences)
+  let cleanText = text.trim();
+  const firstBrace = cleanText.indexOf('{');
+  const firstBracket = cleanText.indexOf('[');
+  
+  let startIdx = -1;
+  let endIdx = -1;
+  
+  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+    startIdx = firstBrace;
+    endIdx = cleanText.lastIndexOf('}');
+  } else if (firstBracket !== -1) {
+    startIdx = firstBracket;
+    endIdx = cleanText.lastIndexOf(']');
+  }
+
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    cleanText = cleanText.substring(startIdx, endIdx + 1);
+  }
+
+  // Remove trailing commas before closing braces/brackets (extremely common syntax error)
+  cleanText = cleanText.replace(/,(\s*[}\]])/g, '$1');
 
   // 1. Try direct parse
   try {
@@ -105,7 +125,6 @@ export async function generateJson(
   } catch (_) {}
 
   // 2. If the model returned a truncated array, try to recover the last complete item
-  // Find the last complete JSON object boundary: last `},` or `}` before the truncation
   try {
     if (cleanText.trimStart().startsWith('[')) {
       // Find last complete object by looking for the last `}` followed by optional whitespace then `,` or end of array
