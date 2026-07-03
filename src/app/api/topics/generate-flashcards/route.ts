@@ -58,6 +58,17 @@ Generate the active-recall flashcards.`;
       throw new Error('AI did not return a valid list of flashcards');
     }
 
+    // Delete existing AI-generated flashcards for this topic (keeping manually added ones)
+    const { error: deleteCardsError } = await supabase
+      .from('flashcards')
+      .delete()
+      .eq('topic_id', topicId)
+      .eq('source', 'ai');
+
+    if (deleteCardsError) {
+      console.error('Failed to delete old flashcards:', deleteCardsError);
+    }
+
     // Insert flashcards into database
     const cardsToInsert = cardsJson.map((card: any) => ({
       topic_id: topicId,

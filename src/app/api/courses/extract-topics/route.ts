@@ -30,21 +30,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No processed materials found for this course.' }, { status: 400 });
     }
 
-    // Fetch the first 6 chunks of each completed material
+    // Fetch chunks of each completed material
     let sourceText = '';
     for (const material of materials) {
       const { data: chunks, error: chunksError } = await supabase
         .from('chunks')
         .select('content')
         .eq('material_id', material.id)
-        .order('created_at', { ascending: true })
-        .limit(6);
+        .order('created_at', { ascending: true }); // Retrieve all chunks chronologically
 
       if (chunksError) continue;
 
       if (chunks && chunks.length > 0) {
+        // Systematic sampling if the document is very long (> 100 chunks)
+        // This ensures the AI gets a representative overview of the whole document (start, middle, and end)
+        let selectedChunks = chunks;
+        if (chunks.length > 100) {
+          const step = chunks.length / 100;
+          selectedChunks = [];
+          for (let i = 0; i < 100; i++) {
+            const idx = Math.floor(i * step);
+            if (chunks[idx]) {
+              selectedChunks.push(chunks[idx]);
+            }
+          }
+        }
         sourceText += `\n--- MATERIAL: ${material.name} ---\n`;
-        sourceText += chunks.map(c => c.content).join('\n');
+        sourceText += selectedChunks.map((c: any) => c.content).join('\n');
       }
     }
 
@@ -66,7 +78,7 @@ Expected Format:
   ...
 ]`;
 
-    const userPrompt = `Here is the course material excerpt:\n${sourceText.substring(0, 40000)}`; // limit size to ~40k chars for safety
+    const userPrompt = `Here is the course material excerpt:\n${sourceText.substring(0, 100000)}`; // limit size to ~100k chars for safety and model limits
 
     const proposedTopics = await generateJson(systemPrompt, userPrompt);
 

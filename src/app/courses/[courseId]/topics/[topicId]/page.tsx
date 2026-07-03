@@ -388,6 +388,28 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
         <div className="space-y-5">
           {note ? (
             <div className="space-y-5 text-sm leading-relaxed">
+              {/* Regenerate Button Bar */}
+              <div className="flex justify-between items-center bg-slate-900/40 p-3.5 rounded-2xl border border-slate-850">
+                <span className="text-xs text-slate-400 font-medium">Study note generated from material.</span>
+                <button
+                  onClick={handleGenerateNote}
+                  disabled={generatingNote}
+                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 disabled:bg-slate-900 text-slate-200 hover:text-white rounded-xl text-[11px] font-bold transition-all border border-slate-750 flex items-center gap-1 shadow-sm"
+                >
+                  {generatingNote ? (
+                    <>
+                      <RotateCw className="w-3 h-3 animate-spin text-slate-400" />
+                      <span>Regenerating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCw className="w-3 h-3 text-indigo-400" />
+                      <span>Regenerate Note</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
               {/* Core Idea */}
               <div className="p-4 bg-slate-900/30 border border-slate-900 rounded-2xl space-y-2">
                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
