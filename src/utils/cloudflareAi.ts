@@ -129,23 +129,15 @@ export async function generateJson(
 
   // Robustly extract JSON block (ignoring preambles, postambles, or markdown fences)
   let cleanText = text.trim();
-  const firstBrace = cleanText.indexOf('{');
-  const firstBracket = cleanText.indexOf('[');
   
-  let startIdx = -1;
-  let endIdx = -1;
-  
-  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
-    startIdx = firstBrace;
-    endIdx = cleanText.lastIndexOf('}');
-  } else if (firstBracket !== -1) {
-    startIdx = firstBracket;
-    endIdx = cleanText.lastIndexOf(']');
+  // If it starts with markdown code block fences, strip them
+  if (cleanText.startsWith('```')) {
+    cleanText = cleanText.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
   }
 
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    cleanText = cleanText.substring(startIdx, endIdx + 1);
-  }
+  const firstBrace = cleanText.indexOf('{');
+  const firstBracket = cleanText.indexOf('[');
+  const startIdx = firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket) ? firstBrace : firstBracket;
 
   // Helper to escape raw, unescaped newlines within JSON string property values
   const escapeRawNewlinesInStrings = (str: string) => {
@@ -274,37 +266,50 @@ export async function generateJson(
     return recovered;
   };
 
-  cleanText = fixMalformedMarkdownArrays(cleanText);
-  cleanText = escapeRawNewlinesInStrings(cleanText);
+  // Function to perform recovery, cleanup, and parsing of a candidate JSON block
+  const parseJsonBlock = (rawBlock: string): any => {
+    let block = rawBlock;
+    block = fixMalformedMarkdownArrays(block);
+    block = escapeRawNewlinesInStrings(block);
+    block = block.replace(/,(\s*[}\]])/g, '$1');
 
-  // Remove trailing commas before closing braces/brackets (extremely common syntax error)
-  cleanText = cleanText.replace(/,(\s*[}\]])/g, '$1');
+    try {
+      return JSON.parse(block);
+    } catch (_) {}
 
-  // 1. Try direct parse
-  try {
-    return JSON.parse(cleanText);
-  } catch (_) {}
+    try {
+      const recovered = closeUnbalancedJson(block);
+      const cleanRecovered = recovered.replace(/,(\s*[}\]])/g, '$1');
+      return JSON.parse(cleanRecovered);
+    } catch (_) {}
 
-  // 2. Try to close unbalanced brackets/braces (handles truncated objects and strings)
-  try {
-    const recovered = closeUnbalancedJson(cleanText);
-    const cleanRecovered = recovered.replace(/,(\s*[}\]])/g, '$1');
-    return JSON.parse(cleanRecovered);
-  } catch (_) {}
+    return null;
+  };
 
-  // 3. If the model returned a truncated array, try to recover the last complete item
-  try {
-    if (cleanText.trimStart().startsWith('[')) {
-      // Find last complete object by looking for the last `}` followed by optional whitespace then `,` or end of array
-      const lastCompleteIdx = cleanText.lastIndexOf('},');
-      if (lastCompleteIdx !== -1) {
-        const recovered = cleanText.substring(0, lastCompleteIdx + 1) + ']';
-        const parsed = JSON.parse(recovered);
-        console.warn(`Recovered ${parsed.length} items from truncated AI JSON response.`);
-        return parsed;
+  // Parse phase
+  if (startIdx !== -1) {
+    const candidate = cleanText.substring(startIdx);
+    
+    // Phase 1: Try parsing the candidate block spanning up to the very end of the string
+    // (This ensures we don't discard any truncated data at the end of the text)
+    const result = parseJsonBlock(candidate);
+    if (result) {
+      return result;
+    }
+
+    // Phase 2: If Phase 1 failed, search for the last closing brace/bracket to strip postambles
+    const endIdx = firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)
+      ? cleanText.lastIndexOf('}')
+      : cleanText.lastIndexOf(']');
+      
+    if (endIdx !== -1 && endIdx > startIdx) {
+      const sliced = cleanText.substring(startIdx, endIdx + 1);
+      const resultSliced = parseJsonBlock(sliced);
+      if (resultSliced) {
+        return resultSliced;
       }
     }
-  } catch (_) {}
+  }
 
   console.error('Failed to parse AI response as JSON. Raw response:', text);
   throw new Error('AI response was not valid JSON.');
