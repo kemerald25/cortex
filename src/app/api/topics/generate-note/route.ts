@@ -67,16 +67,43 @@ Generate the structured Note.`;
 
     const noteJson = await generateJson(systemPrompt, userPrompt);
 
+    // Normalize potential type variations (e.g. if the LLM returned process_logic or exam_angles as arrays instead of strings)
+    let processLogic = noteJson.process_logic || '';
+    if (Array.isArray(processLogic)) {
+      processLogic = processLogic.join('\n');
+    } else if (typeof processLogic !== 'string') {
+      processLogic = JSON.stringify(processLogic);
+    }
+
+    let examAngles = noteJson.exam_angles || '';
+    if (Array.isArray(examAngles)) {
+      examAngles = examAngles.join('\n');
+    } else if (typeof examAngles !== 'string') {
+      examAngles = JSON.stringify(examAngles);
+    }
+
+    let keyDefinitions = noteJson.key_definitions || [];
+    if (typeof keyDefinitions === 'string') {
+      try {
+        keyDefinitions = JSON.parse(keyDefinitions);
+      } catch (_) {
+        keyDefinitions = [];
+      }
+    }
+    if (!Array.isArray(keyDefinitions)) {
+      keyDefinitions = [];
+    }
+
     // Save/Upsert the note in the database
     const { data: savedNote, error: upsertError } = await supabase
       .from('notes')
       .upsert({
         topic_id: topicId,
         core_idea: noteJson.core_idea || '',
-        key_definitions: noteJson.key_definitions || [],
-        process_logic: noteJson.process_logic || '',
+        key_definitions: keyDefinitions,
+        process_logic: processLogic,
         formula: noteJson.formula || null,
-        exam_angles: noteJson.exam_angles || '',
+        exam_angles: examAngles,
         updated_at: new Date().toISOString(),
       })
       .select()

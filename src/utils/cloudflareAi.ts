@@ -116,6 +116,47 @@ export async function generateJson(
     cleanText = cleanText.substring(startIdx, endIdx + 1);
   }
 
+  // Helper to escape raw, unescaped newlines within JSON string property values
+  const escapeRawNewlinesInStrings = (str: string) => {
+    let result = '';
+    let inString = false;
+    let isEscaped = false;
+    for (let i = 0; i < str.length; i++) {
+      const char = str[i];
+      if (isEscaped) {
+        result += char;
+        isEscaped = false;
+        continue;
+      }
+      if (char === '\\') {
+        result += char;
+        isEscaped = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = !inString;
+        result += char;
+        continue;
+      }
+      if (inString && (char === '\n' || char === '\r')) {
+        if (char === '\n') {
+          result += '\\n';
+        } else if (char === '\r') {
+          if (str[i + 1] === '\n') {
+            // Let the subsequent \n handle the replacement
+          } else {
+            result += '\\n';
+          }
+        }
+        continue;
+      }
+      result += char;
+    }
+    return result;
+  };
+
+  cleanText = escapeRawNewlinesInStrings(cleanText);
+
   // Remove trailing commas before closing braces/brackets (extremely common syntax error)
   cleanText = cleanText.replace(/,(\s*[}\]])/g, '$1');
 
