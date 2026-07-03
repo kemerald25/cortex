@@ -188,6 +188,61 @@ export async function generateJson(
     return result;
   };
 
+  // Helper to close any unclosed double quotes and brackets/braces from a truncated JSON response.
+  const closeUnbalancedJson = (str: string): string => {
+    let inString = false;
+    let isEscaped = false;
+    const stack: ('{' | '[')[] = [];
+    
+    for (let i = 0; i < str.length; i++) {
+      const char = str[i];
+      if (isEscaped) {
+        isEscaped = false;
+        continue;
+      }
+      if (char === '\\') {
+        isEscaped = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) {
+        continue;
+      }
+      
+      if (char === '{' || char === '[') {
+        stack.push(char);
+      } else if (char === '}') {
+        if (stack[stack.length - 1] === '{') {
+          stack.pop();
+        }
+      } else if (char === ']') {
+        if (stack[stack.length - 1] === '[') {
+          stack.pop();
+        }
+      }
+    }
+    
+    let recovered = str;
+    if (inString) {
+      recovered += '"';
+    }
+    
+    // Close any open objects/arrays in reverse order
+    while (stack.length > 0) {
+      const open = stack.pop();
+      if (open === '{') {
+        recovered += '}';
+      } else if (open === '[') {
+        recovered += ']';
+      }
+    }
+    
+    return recovered;
+  };
+
   cleanText = fixMalformedMarkdownArrays(cleanText);
   cleanText = escapeRawNewlinesInStrings(cleanText);
 
@@ -199,7 +254,14 @@ export async function generateJson(
     return JSON.parse(cleanText);
   } catch (_) {}
 
-  // 2. If the model returned a truncated array, try to recover the last complete item
+  // 2. Try to close unbalanced brackets/braces (handles truncated objects and strings)
+  try {
+    const recovered = closeUnbalancedJson(cleanText);
+    const cleanRecovered = recovered.replace(/,(\s*[}\]])/g, '$1');
+    return JSON.parse(cleanRecovered);
+  } catch (_) {}
+
+  // 3. If the model returned a truncated array, try to recover the last complete item
   try {
     if (cleanText.trimStart().startsWith('[')) {
       // Find last complete object by looking for the last `}` followed by optional whitespace then `,` or end of array
