@@ -1,33 +1,64 @@
 async function callCloudflareAi(model: string, body: any): Promise<any> {
   const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+  const rawApiTokens = process.env.CLOUDFLARE_API_TOKEN;
 
-  if (!ACCOUNT_ID || !API_TOKEN) {
+  if (!ACCOUNT_ID || !rawApiTokens) {
     throw new Error('Cloudflare AI configuration is missing. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.');
   }
 
-  const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/ai/run/${model}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${API_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Cloudflare AI API error (${response.status}):`, errorText);
-    throw new Error(`Cloudflare AI call failed: ${response.statusText} (${errorText})`);
+  // Split the tokens list by comma
+  const apiTokens = rawApiTokens.split(',').map((t: string) => t.trim()).filter(Boolean);
+  if (apiTokens.length === 0) {
+    throw new Error('No valid Cloudflare API tokens found.');
   }
 
-  const json = await response.json();
-  if (!json.success) {
-    throw new Error(`Cloudflare AI returned success=false: ${JSON.stringify(json.errors)}`);
+  let lastError: any = null;
+
+  for (let i = 0; i < apiTokens.length; i++) {
+    const token = apiTokens[i];
+    const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/ai/run/${model}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      // If rate limited or server error, try the next token
+      if (response.status === 429 || response.status >= 500) {
+        console.warn(`Cloudflare AI API warning with token index ${i} (Status ${response.status}). Retrying with next token...`);
+        lastError = new Error(`Token index ${i} failed with status ${response.status}`);
+        continue;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Cloudflare AI API error with token index ${i} (${response.status}):`, errorText);
+        lastError = new Error(`Cloudflare AI call failed: ${response.statusText} (${errorText})`);
+        continue;
+      }
+
+      const json = await response.json();
+      if (!json.success) {
+        console.error(`Cloudflare AI returned success=false with token index ${i}:`, json.errors);
+        lastError = new Error(`Cloudflare AI returned success=false: ${JSON.stringify(json.errors)}`);
+        continue;
+      }
+
+      // Success! Return result
+      return json.result;
+    } catch (err: any) {
+      console.error(`Network or execution error with token index ${i}:`, err);
+      lastError = err;
+    }
   }
 
-  return json.result;
+  // If all tokens failed
+  throw new Error(`All Cloudflare API tokens failed. Last error: ${lastError?.message}`);
 }
 
 /**
