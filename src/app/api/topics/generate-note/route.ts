@@ -77,7 +77,13 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = `You are Cortex, an expert academic planner and note writer. Your goal is to write a highly structured, exam-oriented study Note for the topic: "${topic.title}".
 Write this note for a student who needs to recall and reproduce these concepts in an exam hall. Keep it extremely concise, focused, and high-impact. Do not include passive filler text.
-Your response MUST be a JSON object with the following schema:
+
+CRITICAL: Your response MUST be a valid JSON object matching the schema below.
+- "process_logic" and "exam_angles" MUST be single strings (wrapped in double quotes).
+- Inside these strings, format the content as markdown lists (e.g. using "1. Item" or "- Item").
+- Do NOT output "process_logic" or "exam_angles" as JSON arrays (i.e. do NOT use [ ] brackets for them).
+
+Schema:
 {
   "core_idea": "A 1-2 sentence high-level summary of the main concept.",
   "key_definitions": [

@@ -155,6 +155,40 @@ export async function generateJson(
     return result;
   };
 
+  // Helper to fix common AI mistakes where string fields (like process_logic or exam_angles) 
+  // are returned as malformed unquoted arrays.
+  const fixMalformedMarkdownArrays = (str: string) => {
+    const targetKeys = ["process_logic", "exam_angles"];
+    let result = str;
+    for (const key of targetKeys) {
+      const regex = new RegExp(`("?${key}"?\\s*:\\s*)\\[([\\s\\S]*?)\\]`, 'g');
+      result = result.replace(regex, (match, prefix, content) => {
+        try {
+          // If it is a valid JSON array, do not touch it
+          JSON.parse(`[${content}]`);
+          return match;
+        } catch (_) {
+          // Parse lines, trim them, escape double quotes, and join them as a single string
+          const lines = content.split('\n')
+            .map((line: string) => line.trim())
+            .filter((line: string) => line.length > 0 && line !== ',' && !line.startsWith(','));
+
+          const cleanContent = lines.map((line: string) => {
+            let l = line.replace(/,$/, '').trim();
+            if (l.startsWith('"') && l.endsWith('"')) {
+              l = l.substring(1, l.length - 1);
+            }
+            return l.replace(/"/g, '\\"');
+          }).join('\\n');
+
+          return `${prefix}"${cleanContent}"`;
+        }
+      });
+    }
+    return result;
+  };
+
+  cleanText = fixMalformedMarkdownArrays(cleanText);
   cleanText = escapeRawNewlinesInStrings(cleanText);
 
   // Remove trailing commas before closing braces/brackets (extremely common syntax error)
