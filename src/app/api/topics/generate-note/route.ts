@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     // Fetch topic information
     const { data: topic, error: topicError } = await supabase
       .from('topics')
-      .select('title, description')
+      .select('title, description, course_id')
       .eq('id', topicId)
       .single();
 
@@ -36,9 +36,40 @@ export async function POST(request: NextRequest) {
 
     if (chunksError) throw chunksError;
 
-    const sourceText = chunks && chunks.length > 0
-      ? chunks.map(c => c.content).join('\n\n')
+    let sourceText = chunks && chunks.length > 0
+      ? chunks.map((c: any) => c.content).join('\n\n')
       : '';
+
+    // Fallback: If no chunks are linked directly to this topic_id,
+    // fetch all chunks for the materials of this course and dynamically search/use them.
+    if (!sourceText.trim() && topic.course_id) {
+      const { data: materials } = await supabase
+        .from('materials')
+        .select('id')
+        .eq('course_id', topic.course_id);
+
+      if (materials && materials.length > 0) {
+        const materialIds = materials.map((m: any) => m.id);
+        const { data: courseChunks } = await supabase
+          .from('chunks')
+          .select('content')
+          .in('material_id', materialIds)
+          .limit(30);
+
+        if (courseChunks && courseChunks.length > 0) {
+          // Attempt to filter chunks that mention topic keywords (words > 3 characters)
+          const keywords = topic.title.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+          const matchedChunks = courseChunks.filter((c: any) => {
+            const contentLower = c.content.toLowerCase();
+            return keywords.some((kw: string) => contentLower.includes(kw));
+          });
+
+          // Use matched chunks if found; otherwise, fall back to the first 15 chunks of the course
+          const selectedChunks = matchedChunks.length > 0 ? matchedChunks : courseChunks.slice(0, 15);
+          sourceText = selectedChunks.map((c: any) => c.content).join('\n\n');
+        }
+      }
+    }
 
     if (!sourceText.trim()) {
       return NextResponse.json({ error: 'No course materials found linked to this topic. Please extract and confirm topics first.' }, { status: 400 });

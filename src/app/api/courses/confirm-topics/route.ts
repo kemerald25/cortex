@@ -25,6 +25,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing courseId or topics array' }, { status: 400 });
     }
 
+    // Disassociate chunks from the existing topics to prevent the "on delete cascade" constraint
+    // from deleting the actual material chunks when we delete the old topics.
+    const { data: materialsToClear } = await supabase
+      .from('materials')
+      .select('id')
+      .eq('course_id', courseId);
+
+    if (materialsToClear && materialsToClear.length > 0) {
+      const materialIdsToClear = materialsToClear.map((m: any) => m.id);
+      await supabase
+        .from('chunks')
+        .update({ topic_id: null })
+        .in('material_id', materialIdsToClear);
+    }
+
     // 1. Delete existing topics for this course (so we can rewrite confirmed ones cleanly)
     const { error: deleteError } = await supabase
       .from('topics')
@@ -59,7 +74,7 @@ export async function POST(request: NextRequest) {
     if (materialsError) throw materialsError;
 
     if (materials && materials.length > 0) {
-      const materialIds = materials.map(m => m.id);
+      const materialIds = materials.map((m: any) => m.id);
 
       // Fetch all chunks belonging to these materials
       const { data: chunks, error: chunksError } = await supabase
@@ -72,7 +87,7 @@ export async function POST(request: NextRequest) {
       if (chunks && chunks.length > 0) {
         // Generate embeddings for each topic title + description
         const topicEmbeddings = await Promise.all(
-          insertedTopics.map(async (topic) => {
+          insertedTopics.map(async (topic: any) => {
             const textToEmbed = `${topic.title}: ${topic.description}`;
             const embedding = await getEmbedding(textToEmbed);
             return {
@@ -84,7 +99,7 @@ export async function POST(request: NextRequest) {
 
         // For each chunk, find the topic with the highest similarity
         // We will perform updates in parallel or sequentially.
-        const chunkUpdates = chunks.map((chunk) => {
+        const chunkUpdates = chunks.map((chunk: any) => {
           // Parse embedding if it's returned as a string (Supabase pgvector sometimes returns pgvector string format "[0.1,0.2,...]")
           let chunkVec: number[] = [];
           if (typeof chunk.embedding === 'string') {
