@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
 Write this note for a student who needs to recall and reproduce these concepts in an exam hall. Keep it extremely concise, focused, and high-impact. Do not include passive filler text.
 
 CRITICAL: Your response MUST be a valid JSON object matching the schema below.
+- Both "process_logic" and "exam_angles" are STRICTLY MANDATORY. Under no circumstances should they be empty or null. If the source material does not explicitly define a step-by-step process or exam angles, you MUST synthesize and write them based on academic best practices for this topic.
 - "key_definitions" MUST contain between 3 to 5 items. Do NOT list more than 5 key terms.
 - "process_logic" and "exam_angles" MUST be single strings (wrapped in double quotes).
 - Inside these strings, format the content as markdown lists (e.g. using "1. Item" or "- Item").
@@ -99,21 +100,22 @@ Schema:
 
 Here is the source material text for this topic:
 ---
-${sourceText.substring(0, 35000)}
+${sourceText.substring(0, 18000)}
 ---
 Generate the structured Note.`;
 
     const noteJson = await generateJson(systemPrompt, userPrompt);
+    console.log('AI noteJson parsed result:', JSON.stringify(noteJson, null, 2));
 
     // Normalize potential type variations (e.g. if the LLM returned process_logic or exam_angles as arrays instead of strings)
-    let processLogic = noteJson.process_logic || '';
+    let processLogic = noteJson.process_logic || noteJson.process || noteJson.logic || noteJson.workflow || '';
     if (Array.isArray(processLogic)) {
       processLogic = processLogic.join('\n');
     } else if (typeof processLogic !== 'string') {
       processLogic = JSON.stringify(processLogic);
     }
 
-    let examAngles = noteJson.exam_angles || '';
+    let examAngles = noteJson.exam_angles || noteJson.exam_questions || noteJson.exam_angles_advice || noteJson.exam_angle || '';
     if (Array.isArray(examAngles)) {
       examAngles = examAngles.join('\n');
     } else if (typeof examAngles !== 'string') {
