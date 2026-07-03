@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
 Write this note for a student who needs to recall and reproduce these concepts in an exam hall. Keep it extremely concise, focused, and high-impact. Do not include passive filler text.
 
 CRITICAL: Your response MUST be a valid JSON object matching the schema below.
+- "key_definitions" MUST contain between 3 to 5 items. Do NOT list more than 5 key terms.
 - "process_logic" and "exam_angles" MUST be single strings (wrapped in double quotes).
 - Inside these strings, format the content as markdown lists (e.g. using "1. Item" or "- Item").
 - Do NOT output "process_logic" or "exam_angles" as JSON arrays (i.e. do NOT use [ ] brackets for them).
@@ -142,6 +143,8 @@ Generate the structured Note.`;
         formula: noteJson.formula || null,
         exam_angles: examAngles,
         updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'topic_id'
       })
       .select()
       .single();
