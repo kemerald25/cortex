@@ -9,6 +9,23 @@ import {
   Trash2, HelpCircle, Eye, EyeOff, RotateCw, X, ChevronRight, Send, ChevronLeft
 } from 'lucide-react';
 
+const formatListText = (val: any): string[] => {
+  if (!val) return [];
+  if (Array.isArray(val)) {
+    return val.flatMap(item => typeof item === 'string' ? item.split('\n') : [JSON.stringify(item)]);
+  }
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) {
+        return parsed.flatMap(item => typeof item === 'string' ? item.split('\n') : [JSON.stringify(item)]);
+      }
+    } catch (_) {}
+    return val.split('\n');
+  }
+  return [JSON.stringify(val)];
+};
+
 export default function TopicDetailsPage({ params }: { params: Promise<{ courseId: string; topicId: string }> }) {
   const router = useRouter();
   const supabase = createClient();
@@ -437,10 +454,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
               <div className="space-y-2.5">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">Process / Logic</h3>
                 <div className="p-4 bg-slate-900/20 border border-slate-900 rounded-2xl space-y-2">
-                  {(Array.isArray(note.process_logic)
-                    ? note.process_logic
-                    : (() => { try { return JSON.parse(note.process_logic); } catch { return [note.process_logic]; } })()
-                  ).map((line: string, i: number) => (
+                  {formatListText(note.process_logic).map((line: string, i: number) => (
                     <p key={i} className="text-slate-300 text-xs leading-relaxed">
                       {line.replace(/\*\*(.*?)\*\*/g, '$1').trim()}
                     </p>
@@ -464,10 +478,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                   <HelpCircle className="w-3.5 h-3.5" /> Common Exam Angles
                 </span>
                 <div className="space-y-2">
-                  {(Array.isArray(note.exam_angles)
-                    ? note.exam_angles
-                    : (() => { try { return JSON.parse(note.exam_angles); } catch { return [note.exam_angles]; } })()
-                  ).map((line: string, i: number) => (
+                  {formatListText(note.exam_angles).map((line: string, i: number) => (
                     <p key={i} className="text-slate-300 text-xs leading-relaxed">
                       {line.replace(/\*\*(.*?)\*\*/g, '$1').trim()}
                     </p>
