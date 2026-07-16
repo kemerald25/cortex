@@ -27,9 +27,71 @@ const formatListText = (val: any): string[] => {
   return [JSON.stringify(val)];
 };
 
+function formatMathText(math: string): string {
+  const latexKeywords = new Set([
+    'frac', 'times', 'cdot', 'left', 'right', 'ldots', 'text', 'mathrm',
+    'sqrt', 'alpha', 'beta', 'gamma', 'delta', 'theta', 'pi', 'sigma',
+    'mu', 'lambda', 'sum', 'int', 'log', 'sin', 'cos', 'tan', 'lim', 'in',
+    'infty', 'pm', 'div', 'approx', 'neq', 'le', 'ge', 'to', 'cap', 'cup'
+  ]);
+
+  let processed = math.replace(/([a-zA-Z])\\\s+([a-zA-Z])/g, '$1 $2');
+  
+  const tokenRegex = /(\\[a-zA-Z]+|[{}[\]()+\-*\/=,_^]|\s+|[a-zA-Z][a-zA-Z\s]*[a-zA-Z]|[a-zA-Z]|\d+(?:\.\d+)?)/g;
+  const tokens = processed.match(tokenRegex) || [processed];
+  
+  let inTextMode = false;
+  let braceDepth = 0;
+  
+  const resultTokens = tokens.map((token) => {
+    if (token.startsWith('\\text') || token.startsWith('\\mathrm')) {
+      inTextMode = true;
+      braceDepth = 0;
+      return token;
+    }
+    
+    if (inTextMode) {
+      if (token === '{') braceDepth++;
+      if (token === '}') {
+        braceDepth--;
+        if (braceDepth <= 0) {
+          inTextMode = false;
+        }
+      }
+      return token;
+    }
+    
+    if (token.startsWith('\\')) {
+      return token;
+    }
+    
+    if (/^[a-zA-Z][a-zA-Z\s]*[a-zA-Z]$/.test(token) && token.trim().length >= 2) {
+      const trimmed = token.trim();
+      if (latexKeywords.has(trimmed.toLowerCase())) {
+        return token;
+      }
+      return `\\text{${trimmed}}`;
+    }
+    
+    return token;
+  });
+  
+  return resultTokens.join('');
+}
+
 function MathRenderer({ math, block = false }: { math: string; block?: boolean; key?: any }) {
+  let cleanMath = math.trim();
+  if (cleanMath.startsWith('$$') && cleanMath.endsWith('$$')) {
+    cleanMath = cleanMath.slice(2, -2).trim();
+  } else if (cleanMath.startsWith('$') && cleanMath.endsWith('$')) {
+    cleanMath = cleanMath.slice(1, -1).trim();
+  }
+
+  // Auto-format plain words inside LaTeX formulas so they render beautifully
+  cleanMath = formatMathText(cleanMath);
+
   try {
-    const html = katex.renderToString(math, {
+    const html = katex.renderToString(cleanMath, {
       displayMode: block,
       throwOnError: false,
     });
@@ -929,7 +991,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                             : 'bg-slate-900/60 border border-slate-850 text-slate-200 rounded-tl-none prose prose-invert'
                         }`}
                       >
-                        {msg.content}
+                        <RenderTextWithMath text={msg.content} />
                       </div>
                     </div>
                   );
