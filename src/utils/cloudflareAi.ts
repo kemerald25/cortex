@@ -314,3 +314,44 @@ export async function generateJson(
   console.error('Failed to parse AI response as JSON. Raw response:', text);
   throw new Error('AI response was not valid JSON.');
 }
+
+/**
+ * Extracts/transcribes text from an image buffer using Llama 3.2 Vision on Cloudflare Workers AI.
+ */
+export async function extractTextFromImage(buffer: Buffer): Promise<string> {
+  try {
+    const base64Image = buffer.toString('base64');
+    
+    // Auto-agree to terms just in case this is the first time the token is using Llama 3.2 Vision
+    try {
+      await callCloudflareAi('@cf/meta/llama-3.2-11b-vision-instruct', { prompt: 'agree' });
+    } catch (e) {
+      // Ignore errors if already agreed or if call fails due to invalid parameters for already agreed tokens
+    }
+
+    const result = await callCloudflareAi('@cf/meta/llama-3.2-11b-vision-instruct', {
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Transcribe all handwritten and typed text from this image as accurately as possible. Output only the transcribed text, maintaining paragraphs and formatting. Do not include markdown code block formatting (like ```) or any greeting, explanation, or conversational commentary.'
+            },
+            {
+              type: 'image',
+              image: base64Image
+            }
+          ]
+        }
+      ]
+    });
+
+    const response = result?.response || '';
+    return typeof response === 'string' ? response.trim() : JSON.stringify(response);
+  } catch (error: any) {
+    console.error('Error in extractTextFromImage via Cloudflare AI:', error);
+    throw new Error(`Cloudflare vision OCR failed: ${error.message}`);
+  }
+}
+

@@ -1,6 +1,6 @@
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
-import { createWorker } from 'tesseract.js';
+import { extractTextFromImage } from './cloudflareAi';
 
 /**
  * Extracts text from a file buffer based on the mime type or file extension.
@@ -40,11 +40,8 @@ export async function extractTextFromBuffer(
       cleanMime.startsWith('image/') ||
       ['png', 'jpg', 'jpeg', 'webp', 'bmp'].includes(fileExt || '')
     ) {
-      // Run OCR using Tesseract.js
-      const worker = await createWorker('eng');
-      const { data: { text } } = await worker.recognize(buffer);
-      await worker.terminate();
-      return text?.trim() || '';
+      // Run OCR using Cloudflare AI Llama Vision
+      return await extractTextFromImage(buffer);
     }
 
     throw new Error(`Unsupported file type: ${mimeType} (${fileName})`);
