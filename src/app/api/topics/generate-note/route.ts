@@ -87,6 +87,8 @@ CRITICAL: Your response MUST be a valid JSON object matching the schema below.
 
 FORMULAS & MATH SYMBOLS INSTRUCTION:
 - Any mathematical equations, formulas, physical laws, or chemical reactions MUST be written in proper LaTeX notation.
+  - YOU MUST EXTRACT THE FORMULA EXACTLY AS IT IS PRESENTED IN THE SOURCE MATERIAL.
+  - Do NOT modify, simplify, or rewrite the variables, symbols, constants, or algebraic layouts. It must be an exact literal match of the formula in the uploaded notebook/materials.
   - NEVER use plain text slashes "/" for division or carets "^" for superscripts without LaTeX. Always use proper LaTeX structures:
     - Use "\\frac{numerator}{denominator}" for all fractions and divisions (e.g. use "\\frac{a}{b}" instead of "a/b").
     - Use "^{exponent}" for all superscripts and exponents (e.g. use "(1 + r)^{-n}" instead of "(1+r)^(-n)").
@@ -95,7 +97,7 @@ FORMULAS & MATH SYMBOLS INSTRUCTION:
   - DO NOT use unescaped backslashes before plain words (e.g. never write "\\value" or "\\Rent" as they are invalid LaTeX commands that will break rendering).
   - Use "$ ... $" for inline math inside text fields.
   - Use "$$ ... $$" for block math equations inside text fields.
-  - The "formula" field MUST contain the primary formula/equation/syntax block (written in LaTeX or code notation, without surrounding "$" or "$$"), or null if none apply.
+  - The "formula" field MUST contain the primary formula/equation/syntax block exactly as extracted from the source material (written in LaTeX or code notation, without surrounding "$" or "$$"), or null if none apply.
 
 Schema:
 {
