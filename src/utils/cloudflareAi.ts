@@ -139,6 +139,51 @@ export async function generateJson(
   const firstBracket = cleanText.indexOf('[');
   const startIdx = firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket) ? firstBrace : firstBracket;
 
+  // Helper to escape backslashes in LaTeX commands that are invalid JSON escapes
+  const escapeLatexBackslashes = (str: string): string => {
+    let result = '';
+    let inString = false;
+    
+    for (let i = 0; i < str.length; i++) {
+      const char = str[i];
+      if (char === '"') {
+        // Check if this quote is escaped
+        let backslashCount = 0;
+        let j = i - 1;
+        while (j >= 0 && str[j] === '\\') {
+          backslashCount++;
+          j--;
+        }
+        if (backslashCount % 2 === 0) {
+          inString = !inString;
+        }
+        result += char;
+        continue;
+      }
+      
+      if (inString && char === '\\') {
+        const nextChar = str[i + 1];
+        if (nextChar === '\\') {
+          result += '\\\\';
+          i++; // skip next backslash
+          continue;
+        }
+        
+        // If it's a valid JSON escape: \n, \t, \r, \", or \uXXXX
+        const isUnicode = nextChar === 'u' && /^[0-9a-fA-F]{4}$/.test(str.substring(i + 2, i + 6));
+        if (nextChar === 'n' || nextChar === 't' || nextChar === 'r' || nextChar === '"' || isUnicode) {
+          result += char;
+        } else {
+          result += '\\\\';
+        }
+        continue;
+      }
+      
+      result += char;
+    }
+    return result;
+  };
+
   // Helper to escape raw, unescaped newlines within JSON string property values
   const escapeRawNewlinesInStrings = (str: string) => {
     let result = '';
@@ -266,11 +311,11 @@ export async function generateJson(
     return recovered;
   };
 
-  // Function to perform recovery, cleanup, and parsing of a candidate JSON block
   const parseJsonBlock = (rawBlock: string): any => {
     let block = rawBlock;
     block = fixMalformedMarkdownArrays(block);
     block = escapeRawNewlinesInStrings(block);
+    block = escapeLatexBackslashes(block);
     block = block.replace(/,(\s*[}\]])/g, '$1');
 
     try {
