@@ -18,13 +18,15 @@
     "pdf-parse": "^1.1.1",
     "mammoth": "^1.8.0",
     "tesseract.js": "^5.1.1",
-    "framer-motion": "^11.11.9"
+    "framer-motion": "^11.11.9",
+    "katex": "^0.16.11"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/katex": "^0.16.7",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",

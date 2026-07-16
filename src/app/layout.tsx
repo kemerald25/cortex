@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Outfit } from 'next/font/google';
 import NavigationWrapper from '@/components/NavigationWrapper';
+import 'katex/dist/katex.min.css';
 import './globals.css';
 
 // Using a gorgeous modern font Outfit

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, use } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { calculateSM2 } from '@/utils/srs';
+import katex from 'katex';
 import { 
   Sparkles, MessageSquare, Plus, CheckCircle, Image, 
   Trash2, HelpCircle, Eye, EyeOff, RotateCw, X, ChevronRight, Send, ChevronLeft
@@ -25,6 +26,79 @@ const formatListText = (val: any): string[] => {
   }
   return [JSON.stringify(val)];
 };
+
+function MathRenderer({ math, block = false }: { math: string; block?: boolean; key?: any }) {
+  try {
+    const html = katex.renderToString(math, {
+      displayMode: block,
+      throwOnError: false,
+    });
+    return <span dangerouslySetInnerHTML={{ __html: html }} />;
+  } catch (e) {
+    console.error(e);
+    return <code className="font-mono">{math}</code>;
+  }
+}
+
+function RenderTextWithMath({ text }: { text: string }) {
+  if (!text) return null;
+
+  const parts: { type: 'text' | 'inline-math' | 'block-math'; content: string }[] = [];
+  const regex = /(\$\$.*?\$\$|\$.*?\$)/g;
+  const tokens = text.split(regex);
+
+  tokens.forEach((token) => {
+    if (token.startsWith('$$') && token.endsWith('$$')) {
+      parts.push({ type: 'block-math', content: token.slice(2, -2) });
+    } else if (token.startsWith('$') && token.endsWith('$')) {
+      parts.push({ type: 'inline-math', content: token.slice(1, -1) });
+    } else {
+      parts.push({ type: 'text', content: token });
+    }
+  });
+
+  return (
+    <>
+      {parts.map((part, idx) => {
+        if (part.type === 'block-math') {
+          return (
+            <div key={idx} className="my-3 overflow-x-auto py-1 text-center">
+              <MathRenderer math={part.content} block={true} />
+            </div>
+          );
+        }
+        if (part.type === 'inline-math') {
+          return <MathRenderer key={idx} math={part.content} block={false} />;
+        }
+        return <span key={idx}>{part.content}</span>;
+      })}
+    </>
+  );
+}
+
+function MathFormulaRenderer({ formula }: { formula: string }) {
+  const looksLikeCode = 
+    formula.includes('const ') || 
+    formula.includes('let ') || 
+    formula.includes('function ') || 
+    formula.includes('def ') || 
+    formula.includes('import ') ||
+    (formula.includes(';') && formula.includes('{') && formula.includes('}'));
+
+  if (looksLikeCode) {
+    return (
+      <pre className="p-4 bg-slate-950 border border-slate-900 rounded-2xl text-indigo-400 text-xs font-mono overflow-x-auto">
+        <code>{formula}</code>
+      </pre>
+    );
+  }
+
+  return (
+    <div className="p-6 bg-slate-950 border border-slate-900 rounded-2xl flex flex-col items-center justify-center min-h-[80px] overflow-x-auto">
+      <MathRenderer math={formula} block={true} />
+    </div>
+  );
+}
 
 export default function TopicDetailsPage({ params }: { params: Promise<{ courseId: string; topicId: string }> }) {
   const router = useRouter();
@@ -448,7 +522,9 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" /> Core Idea
                 </span>
-                <p className="text-slate-200 font-medium">{note.core_idea}</p>
+                <p className="text-slate-200 font-medium">
+                  <RenderTextWithMath text={note.core_idea} />
+                </p>
               </div>
 
               {/* Key Definitions */}
@@ -458,8 +534,12 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                   <div className="grid grid-cols-1 gap-2.5">
                     {note.key_definitions.map((def: any, i: number) => (
                       <div key={i} className="p-3.5 bg-slate-900/10 border border-slate-900 rounded-xl space-y-1">
-                        <strong className="text-white text-xs block font-bold">{def.term}</strong>
-                        <span className="text-xs text-slate-350">{def.definition}</span>
+                        <strong className="text-white text-xs block font-bold">
+                          <RenderTextWithMath text={def.term} />
+                        </strong>
+                        <span className="text-xs text-slate-350">
+                          <RenderTextWithMath text={def.definition} />
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -472,7 +552,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                 <div className="p-4 bg-slate-900/20 border border-slate-900 rounded-2xl space-y-2">
                   {formatListText(note.process_logic).map((line: string, i: number) => (
                     <p key={i} className="text-slate-300 text-xs leading-relaxed">
-                      {line.replace(/\*\*(.*?)\*\*/g, '$1').trim()}
+                      <RenderTextWithMath text={line.replace(/\*\*(.*?)\*\*/g, '$1').trim()} />
                     </p>
                   ))}
                 </div>
@@ -482,9 +562,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
               {note.formula && (
                 <div className="space-y-2.5">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">Formula / Code</h3>
-                  <pre className="p-4 bg-slate-950 border border-slate-900 rounded-2xl text-indigo-400 text-xs font-mono overflow-x-auto">
-                    <code>{note.formula}</code>
-                  </pre>
+                  <MathFormulaRenderer formula={note.formula} />
                 </div>
               )}
 
@@ -496,7 +574,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                 <div className="space-y-2">
                   {formatListText(note.exam_angles).map((line: string, i: number) => (
                     <p key={i} className="text-slate-300 text-xs leading-relaxed">
-                      {line.replace(/\*\*(.*?)\*\*/g, '$1').trim()}
+                      <RenderTextWithMath text={line.replace(/\*\*(.*?)\*\*/g, '$1').trim()} />
                     </p>
                   ))}
                 </div>
@@ -611,7 +689,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                       <span>{new Date(add.created_at).toLocaleDateString()}</span>
                     </div>
                     <p className="text-xs text-slate-350 leading-relaxed whitespace-pre-line">
-                      {add.content}
+                      <RenderTextWithMath text={add.content} />
                     </p>
                   </div>
                 ))}
@@ -642,13 +720,13 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                 >
                   <div className="flex-1 flex flex-col justify-center items-center text-center">
                     {!isFlipped ? (
-                      <p className="text-white font-semibold text-sm leading-relaxed max-w-[280px]">
-                        {currentCard?.question}
-                      </p>
+                      <div className="text-white font-semibold text-sm leading-relaxed max-w-[280px]">
+                        <RenderTextWithMath text={currentCard?.question} />
+                      </div>
                     ) : (
-                      <p className="text-slate-300 text-xs leading-relaxed max-w-[280px] whitespace-pre-line">
-                        {currentCard?.answer}
-                      </p>
+                      <div className="text-slate-300 text-xs leading-relaxed max-w-[280px] whitespace-pre-line">
+                        <RenderTextWithMath text={currentCard?.answer} />
+                      </div>
                     )}
                   </div>
 
