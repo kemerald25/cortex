@@ -501,7 +501,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                 <button
                   onClick={handleGenerateNote}
                   disabled={generatingNote}
-                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 disabled:bg-slate-900 text-slate-200 hover:text-white rounded-xl text-[11px] font-bold transition-all border border-slate-750 flex items-center gap-1 shadow-sm"
+                  className="px-3 py-2 bg-gradient-to-r from-indigo-600/90 to-violet-655/90 hover:from-indigo-500 hover:to-violet-500 disabled:from-slate-900 disabled:to-slate-900 text-white rounded-xl text-[11px] font-bold transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(99,102,241,0.15)] hover:shadow-[0_0_18px_rgba(99,102,241,0.3)] hover:scale-[1.02] active:scale-[0.98] border border-indigo-500/10"
                 >
                   {generatingNote ? (
                     <>
@@ -510,7 +510,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                     </>
                   ) : (
                     <>
-                      <RotateCw className="w-3 h-3 text-indigo-400" />
+                      <RotateCw className="w-3 h-3 text-white" />
                       <span>Regenerate Note</span>
                     </>
                   )}
@@ -594,7 +594,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
               <button
                 onClick={handleGenerateNote}
                 disabled={generatingNote}
-                className="px-4 py-2.5 bg-indigo-650 hover:bg-indigo-600 disabled:bg-indigo-900/20 disabled:text-slate-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 mx-auto"
+                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-indigo-950/50 disabled:to-violet-950/50 disabled:text-slate-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 mx-auto shadow-[0_0_20px_rgba(99,102,241,0.25)] hover:shadow-[0_0_30px_rgba(99,102,241,0.45)] hover:scale-[1.02] active:scale-[0.98] border border-indigo-500/20"
               >
                 {generatingNote ? (
                   <>

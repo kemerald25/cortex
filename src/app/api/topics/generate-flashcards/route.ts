@@ -32,6 +32,12 @@ Focus each card on a single critical detail: a term definition, a step in a proc
 Design questions to prompt active recall (e.g., "What are the 3 main parts of X?" or "Explain the difference between Y and Z in the context of W"), not simple yes/no.
 Keep answers concise and clear so the student can easily check their accuracy.
 
+FORMULAS & MATH SYMBOLS INSTRUCTION:
+- Any mathematical equations, formulas, physical laws, or chemical reactions in either questions or answers MUST be written in LaTeX notation.
+  - Use "$ ... $" for inline math (e.g. "$E = mc^2$").
+  - Use "$$ ... $$" for block math equations.
+  - Never write formulas as plain text (like "x/y"); always use LaTeX notation (like "$\\frac{x}{y}$") for a professional mathematical look.
+
 Your response MUST be a JSON array of objects. Do not write any markdown code block formatting. Return only the JSON.
 
 Expected Format:

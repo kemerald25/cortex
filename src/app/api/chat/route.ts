@@ -74,7 +74,13 @@ export async function POST(request: NextRequest) {
 Use the provided context (relevant course materials, notes, and user additions) as your primary source of truth.
 1. If the answer is found in the context, answer directly and clearly using the context.
 2. If the context is empty, incomplete, or does not contain the answer to the user's question, use your general academic knowledge to provide a helpful, accurate, and comprehensive answer. When you do this, append a brief note at the end of your response in square brackets (e.g. "[Note: This explanation is based on general academic knowledge as it wasn't found in your uploaded materials]").
-3. Keep your answers concise, clear, and direct. Use bullet points, code blocks, or markdown tables when explaining terms or processes.`;
+3. Keep your answers concise, clear, and direct. Use bullet points, code blocks, or markdown tables when explaining terms or processes.
+
+FORMULAS & MATH SYMBOLS INSTRUCTION:
+- Any mathematical equations, formulas, physical laws, or chemical reactions in your explanations MUST be written in LaTeX notation.
+  - Use "$ ... $" for inline math (e.g. "$E = mc^2$").
+  - Use "$$ ... $$" for block math equations.
+  - Never write formulas as plain text (like "x/y"); always use LaTeX notation (like "$\\frac{x}{y}$") for a professional mathematical look.`;
 
     const userPrompt = `Context details:
 ${context || 'No study materials or notes exist for this topic yet.'}

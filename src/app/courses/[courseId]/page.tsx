@@ -542,7 +542,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                   <button
                     onClick={handleExtractTopics}
                     disabled={extractingTopics}
-                    className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 disabled:bg-slate-900 text-slate-200 hover:text-white rounded-xl text-[11px] font-bold transition-all border border-slate-750 flex items-center gap-1 shadow-sm"
+                    className="px-3 py-2 bg-gradient-to-r from-indigo-600/90 to-violet-655/90 hover:from-indigo-500 hover:to-violet-500 disabled:from-slate-900 disabled:to-slate-900 text-white rounded-xl text-[11px] font-bold transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(99,102,241,0.15)] hover:shadow-[0_0_18px_rgba(99,102,241,0.3)] hover:scale-[1.02] active:scale-[0.98] border border-indigo-500/10"
                   >
                     {extractingTopics ? (
                       <>
@@ -551,7 +551,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                       </>
                     ) : (
                       <>
-                        <RefreshCw className="w-3 h-3 text-indigo-400" />
+                        <RefreshCw className="w-3 h-3 text-white" />
                         <span>Regenerate Syllabus</span>
                       </>
                     )}
@@ -584,7 +584,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
               </div>
             </div>
           )}
-
+ 
           {/* Proposal Generation Trigger */}
           {topics.length === 0 && !proposedTOC && (
             <div className="p-8 border border-dashed border-slate-900 rounded-3xl text-center space-y-5">
@@ -597,7 +597,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                   Cortex can analyze all uploaded study materials and outline a custom syllabus of study topics.
                 </p>
               </div>
-
+ 
               {materials.filter(m => m.status === 'completed').length === 0 ? (
                 <div className="p-3 text-xs bg-amber-500/10 border border-amber-500/25 text-amber-400 rounded-xl flex items-center gap-2 max-w-[280px] mx-auto">
                   <AlertCircle className="w-4 h-4 shrink-0" />
@@ -607,7 +607,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                 <button
                   onClick={handleExtractTopics}
                   disabled={extractingTopics}
-                  className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/20 disabled:text-slate-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 mx-auto"
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-indigo-950/50 disabled:to-violet-950/50 disabled:text-slate-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 mx-auto shadow-[0_0_20px_rgba(99,102,241,0.25)] hover:shadow-[0_0_30px_rgba(99,102,241,0.45)] hover:scale-[1.02] active:scale-[0.98] border border-indigo-500/20"
                 >
                   {extractingTopics ? (
                     <>
