@@ -86,11 +86,16 @@ CRITICAL: Your response MUST be a valid JSON object matching the schema below.
 - Do NOT output "process_logic" or "exam_angles" as JSON arrays (i.e. do NOT use [ ] brackets for them).
 
 FORMULAS & MATH SYMBOLS INSTRUCTION:
-- Any mathematical equations, formulas, physical laws, or chemical reactions MUST be written in LaTeX notation.
-  - Use "$ ... $" for inline math (e.g. "$E = mc^2$").
-  - Use "$$ ... $$" for block math equations.
-  - The "formula" field MUST contain the primary formula/equation/syntax block (written in LaTeX or code notation, without surrounding "$$"), or null if none apply.
-  - Never write formulas as plain text (like "x/y"); always use LaTeX notation (like "$\frac{x}{y}$") for a professional mathematical look.
+- Any mathematical equations, formulas, physical laws, or chemical reactions MUST be written in proper LaTeX notation.
+  - NEVER use plain text slashes "/" for division or carets "^" for superscripts without LaTeX. Always use proper LaTeX structures:
+    - Use "\\frac{numerator}{denominator}" for all fractions and divisions (e.g. use "\\frac{a}{b}" instead of "a/b").
+    - Use "^{exponent}" for all superscripts and exponents (e.g. use "(1 + r)^{-n}" instead of "(1+r)^(-n)").
+    - Use "_{subscript}" for subscripts.
+  - Wrap any plain text words or variable names inside equations in "\\text{...}" so they are formatted as readable words rather than italicized individual math variables (e.g. use "\\text{Rent}" instead of "Rent", and "\\text{Value}" instead of "Value").
+  - DO NOT use unescaped backslashes before plain words (e.g. never write "\\value" or "\\Rent" as they are invalid LaTeX commands that will break rendering).
+  - Use "$ ... $" for inline math inside text fields.
+  - Use "$$ ... $$" for block math equations inside text fields.
+  - The "formula" field MUST contain the primary formula/equation/syntax block (written in LaTeX or code notation, without surrounding "$" or "$$"), or null if none apply.
 
 Schema:
 {

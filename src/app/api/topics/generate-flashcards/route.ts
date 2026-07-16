@@ -33,10 +33,15 @@ Design questions to prompt active recall (e.g., "What are the 3 main parts of X?
 Keep answers concise and clear so the student can easily check their accuracy.
 
 FORMULAS & MATH SYMBOLS INSTRUCTION:
-- Any mathematical equations, formulas, physical laws, or chemical reactions in either questions or answers MUST be written in LaTeX notation.
-  - Use "$ ... $" for inline math (e.g. "$E = mc^2$").
-  - Use "$$ ... $$" for block math equations.
-  - Never write formulas as plain text (like "x/y"); always use LaTeX notation (like "$\\frac{x}{y}$") for a professional mathematical look.
+- Any mathematical equations, formulas, physical laws, or chemical reactions in either questions or answers MUST be written in proper LaTeX notation.
+  - NEVER use plain text slashes "/" for division or carets "^" for superscripts without LaTeX. Always use proper LaTeX structures:
+    - Use "\\frac{numerator}{denominator}" for all fractions and divisions (e.g. use "\\frac{a}{b}" instead of "a/b").
+    - Use "^{exponent}" for all superscripts and exponents (e.g. use "(1 + r)^{-n}" instead of "(1+r)^(-n)").
+    - Use "_{subscript}" for subscripts.
+  - Wrap any plain text words or variable names inside equations in "\\text{...}" so they are formatted as readable words rather than italicized individual math variables (e.g. use "\\text{Rent}" instead of "Rent", and "\\text{Value}" instead of "Value").
+  - DO NOT use unescaped backslashes before plain words (e.g. never write "\\value" or "\\Rent" as they are invalid LaTeX commands that will break rendering).
+  - Use "$ ... $" for inline math inside text fields.
+  - Use "$$ ... $$" for block math equations inside text fields.
 
 Your response MUST be a JSON array of objects. Do not write any markdown code block formatting. Return only the JSON.
 
