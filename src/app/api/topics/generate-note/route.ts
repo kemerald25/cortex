@@ -85,6 +85,13 @@ CRITICAL: Your response MUST be a valid JSON object matching the schema below.
 - Inside these strings, format the content as markdown lists (e.g. using "1. Item" or "- Item").
 - Do NOT output "process_logic" or "exam_angles" as JSON arrays (i.e. do NOT use [ ] brackets for them).
 
+FORMULAS & MATH SYMBOLS INSTRUCTION:
+- Any mathematical equations, formulas, physical laws, or chemical reactions MUST be written in LaTeX notation.
+  - Use "$ ... $" for inline math (e.g. "$E = mc^2$").
+  - Use "$$ ... $$" for block math equations.
+  - The "formula" field MUST contain the primary formula/equation/syntax block (written in LaTeX or code notation, without surrounding "$$"), or null if none apply.
+  - Never write formulas as plain text (like "x/y"); always use LaTeX notation (like "$\frac{x}{y}$") for a professional mathematical look.
+
 Schema:
 {
   "core_idea": "A 1-2 sentence high-level summary of the main concept.",
