@@ -53,7 +53,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
       .order('created_at', { ascending: false });
 
     // Clean up any stale "extracting" materials (older than 2 minutes)
-    const cleanedMats = mats ? await Promise.all(mats.map(async (mat) => {
+    const cleanedMats = mats ? await Promise.all(mats.map(async (mat: any) => {
       if (mat.status === 'extracting') {
         const createdTime = new Date(mat.created_at).getTime();
         const now = new Date().getTime();
@@ -169,6 +169,40 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
       alert(`Upload failed: ${err.message}`);
     } finally {
       setUploading(false);
+    }
+  };
+  
+  // Retry failed material extraction
+  const handleRetry = async (materialId: string) => {
+    // 1. Update status locally to extracting so the spinner starts immediately
+    setMaterials((prev) =>
+      prev.map((mat) =>
+        mat.id === materialId
+          ? { ...mat, status: 'extracting', created_at: new Date().toISOString() }
+          : mat
+      )
+    );
+
+    try {
+      // 2. Update status and timestamp in Supabase
+      const nowStr = new Date().toISOString();
+      await supabase
+        .from('materials')
+        .update({ status: 'extracting', created_at: nowStr })
+        .eq('id', materialId);
+
+      // 3. Call OCR/Text Extraction API route
+      fetch('/api/materials/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ materialId }),
+      }).then(() => {
+        loadCourseDetails();
+      });
+    } catch (err: any) {
+      console.error(err);
+      alert(`Retry failed: ${err.message}`);
+      await loadCourseDetails();
     }
   };
 
@@ -428,6 +462,15 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                         </div>
                       </div>
                     </div>
+                    {mat.status === 'failed' && (
+                      <button
+                        onClick={() => handleRetry(mat.id)}
+                        className="px-2.5 py-1 bg-rose-950 hover:bg-rose-900/70 border border-rose-900/40 text-rose-350 hover:text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-sm"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-rose-450" />
+                        <span>Retry</span>
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
