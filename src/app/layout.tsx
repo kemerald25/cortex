@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Outfit } from 'next/font/google';
 import NavigationWrapper from '@/components/NavigationWrapper';
 import './globals.css';
@@ -13,7 +13,13 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: 'Cortex - read once, remember always',
   description: 'Turn your PDF, DOCX, and handwritten study materials into reviewable notes and flashcards with spaced repetition.',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
