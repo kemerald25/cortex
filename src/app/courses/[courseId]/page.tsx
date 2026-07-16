@@ -22,7 +22,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
   const [uploading, setUploading] = useState(false);
   const [materialName, setMaterialName] = useState('');
   const [materialType, setMaterialType] = useState('notes'); // textbook, past questions, slides, notes
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Topics states
   const [topics, setTopics] = useState<any[]>([]);
@@ -82,54 +82,65 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
   // Handle Material Upload
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile || !materialName || !course) return;
+    if (selectedFiles.length === 0 || !course) return;
 
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const fileExt = selectedFile.name.split('.').pop();
-      const storagePath = `${user.id}/${Date.now()}.${fileExt}`;
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const fileExt = file.name.split('.').pop();
+        const storagePath = `${user.id}/${Date.now()}_${i}.${fileExt}`;
 
-      // 1. Upload to Supabase Storage
-      const { error: storageError } = await supabase.storage
-        .from('materials')
-        .upload(storagePath, selectedFile);
+        // 1. Upload to Supabase Storage
+        const { error: storageError } = await supabase.storage
+          .from('materials')
+          .upload(storagePath, file);
 
-      if (storageError) throw storageError;
+        if (storageError) throw storageError;
 
-      // 2. Insert record in materials table
-      const { data: matRecord, error: dbError } = await supabase
-        .from('materials')
-        .insert({
-          course_id: courseId,
-          name: materialName,
-          type: materialType,
-          file_path: storagePath,
-          status: 'pending',
-        })
-        .select()
-        .single();
+        // Determine name for this material
+        let name = materialName.trim();
+        if (!name) {
+          name = file.name.split('.').slice(0, -1).join('.');
+        } else if (selectedFiles.length > 1) {
+          name = `${materialName} - ${file.name.split('.').slice(0, -1).join('.')}`;
+        }
 
-      if (dbError || !matRecord) throw dbError || new Error('Failed to create material record');
+        // 2. Insert record in materials table
+        const { data: matRecord, error: dbError } = await supabase
+          .from('materials')
+          .insert({
+            course_id: courseId,
+            name: name,
+            type: materialType,
+            file_path: storagePath,
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (dbError || !matRecord) throw dbError || new Error(`Failed to create material record for ${file.name}`);
+
+        // 3. Trigger OCR/Text Extraction API route asynchronously
+        fetch('/api/materials/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ materialId: matRecord.id }),
+        }).then(() => {
+          // Reload details to capture updated extraction status
+          loadCourseDetails();
+        });
+      }
 
       // Reset Form
       setMaterialName('');
-      setSelectedFile(null);
+      setSelectedFiles([]);
       
       // Reload lists
       await loadCourseDetails();
-
-      // 3. Trigger OCR/Text Extraction API route asynchronously
-      fetch('/api/materials/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ materialId: matRecord.id }),
-      }).then(() => {
-        // Reload details to capture updated extraction status
-        loadCourseDetails();
-      });
 
     } catch (err: any) {
       console.error(err);
@@ -293,8 +304,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
               <div>
                 <input
                   type="text"
-                  required
-                  placeholder="Material name (e.g. Lecture 1 Slides)"
+                  placeholder="Material name (optional, defaults to filename)"
                   value={materialName}
                   onChange={(e) => setMaterialName(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-xs"
@@ -319,13 +329,15 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                   <input
                     type="file"
                     required
+                    multiple
                     accept=".pdf,.docx,image/*"
                     onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setSelectedFile(e.target.files[0]);
-                        if (!materialName) {
+                      if (e.target.files && e.target.files.length > 0) {
+                        const filesArray = Array.from(e.target.files) as File[];
+                        setSelectedFiles(filesArray);
+                        if (filesArray.length === 1 && !materialName) {
                           // Auto fill name
-                          const base = e.target.files[0].name.split('.').slice(0, -1).join('.');
+                          const base = filesArray[0].name.split('.').slice(0, -1).join('.');
                           setMaterialName(base);
                         }
                       }
@@ -333,14 +345,18 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
                   <div className="w-full px-3 py-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 text-xs font-semibold text-center border-dashed hover:border-slate-700 transition-all overflow-hidden text-ellipsis whitespace-nowrap">
-                    {selectedFile ? selectedFile.name : 'Select PDF/DOCX/Photo'}
+                    {selectedFiles.length > 0
+                      ? selectedFiles.length === 1
+                        ? selectedFiles[0].name
+                        : `${selectedFiles.length} files selected`
+                      : 'Select PDF/DOCX/Photos'}
                   </div>
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={uploading || !selectedFile}
+                disabled={uploading || selectedFiles.length === 0}
                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/20 disabled:text-slate-500 text-white font-bold rounded-xl text-xs transition-all flex justify-center items-center gap-1.5"
               >
                 {uploading ? (

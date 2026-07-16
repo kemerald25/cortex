@@ -42,7 +42,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
   // Additions states
   const [additions, setAdditions] = useState<any[]>([]);
   const [additionText, setAdditionText] = useState('');
-  const [additionFile, setAdditionFile] = useState<File | null>(null);
+  const [additionFiles, setAdditionFiles] = useState<File[]>([]);
   const [addingAddition, setAddingAddition] = useState(false);
 
   // Flashcards states
@@ -167,42 +167,58 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
   // Save Text or Image Addition
   const handleAddAddition = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!additionText && !additionFile) return;
+    if (!additionText.trim() && additionFiles.length === 0) return;
 
     setAddingAddition(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not logged in');
 
-      let filePath = null;
-
-      if (additionFile) {
-        // Upload photo first
-        const fileExt = additionFile.name.split('.').pop();
-        filePath = `${user.id}/${Date.now()}.${fileExt}`;
+      // 1. Process files if any
+      for (let i = 0; i < additionFiles.length; i++) {
+        const file = additionFiles[i];
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/${Date.now()}_${i}.${fileExt}`;
         const { error: storageError } = await supabase.storage
           .from('additions')
-          .upload(filePath, additionFile);
+          .upload(filePath, file);
         if (storageError) throw storageError;
+
+        // Call API to process OCR, chunk, embed, and insert addition
+        const res = await fetch('/api/topics/add-addition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId,
+            type: 'image',
+            content: '',
+            filePath,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Failed to save addition for ${file.name}`);
       }
 
-      // Call API to process text/OCR, chunk, embed, and insert addition
-      const res = await fetch('/api/topics/add-addition', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topicId,
-          type: additionFile ? 'image' : 'text',
-          content: additionText,
-          filePath,
-        }),
-      });
+      // 2. Process text addition if text is provided
+      if (additionText.trim()) {
+        const res = await fetch('/api/topics/add-addition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId,
+            type: 'text',
+            content: additionText,
+            filePath: null,
+          }),
+        });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save addition');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save text addition');
+      }
 
       setAdditionText('');
-      setAdditionFile(null);
+      setAdditionFiles([]);
       
       // Reload additions list
       const { data: adds } = await supabase
@@ -541,13 +557,20 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
               <div className="flex justify-between items-center gap-2">
                 <div className="relative overflow-hidden flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-slate-400 text-xs font-semibold cursor-pointer max-w-[200px]">
                   <Image className="w-4 h-4 text-slate-450 shrink-0" />
-                  <span className="truncate">{additionFile ? additionFile.name : 'Upload Note Photo'}</span>
+                  <span className="truncate">
+                    {additionFiles.length > 0
+                      ? additionFiles.length === 1
+                        ? additionFiles[0].name
+                        : `${additionFiles.length} photos selected`
+                      : 'Upload Note Photo(s)'}
+                  </span>
                   <input
                     type="file"
+                    multiple
                     accept="image/*"
                     onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setAdditionFile(e.target.files[0]);
+                      if (e.target.files && e.target.files.length > 0) {
+                        setAdditionFiles(Array.from(e.target.files) as File[]);
                       }
                     }}
                     className="absolute inset-0 opacity-0 cursor-pointer"
@@ -556,7 +579,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
 
                 <button
                   type="submit"
-                  disabled={addingAddition || (!additionText && !additionFile)}
+                  disabled={addingAddition || (!additionText.trim() && additionFiles.length === 0)}
                   className="py-2 px-4 bg-indigo-650 hover:bg-indigo-600 disabled:bg-indigo-900/20 disabled:text-slate-500 text-white rounded-xl text-xs font-bold transition-all shrink-0"
                 >
                   {addingAddition ? (
