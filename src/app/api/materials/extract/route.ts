@@ -6,6 +6,7 @@ import { getEmbedding } from '@/utils/cloudflareAi';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
+  let currentMaterialId: string | null = null;
 
   try {
     // Check auth session
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
     if (!materialId) {
       return NextResponse.json({ error: 'Missing materialId' }, { status: 450 });
     }
+    currentMaterialId = materialId;
 
     // Fetch material metadata
     const { data: material, error: fetchError } = await supabase
@@ -103,15 +105,16 @@ export async function POST(request: NextRequest) {
     console.error('Extraction API error:', error);
     
     // Attempt to mark material as failed
-    try {
-      const { materialId } = await request.clone().json();
-      if (materialId) {
+    if (currentMaterialId) {
+      try {
         await supabase
           .from('materials')
           .update({ status: 'failed' })
-          .eq('id', materialId);
+          .eq('id', currentMaterialId);
+      } catch (dbErr) {
+        console.error('Failed to update status to failed in DB:', dbErr);
       }
-    } catch (_) {}
+    }
 
     return NextResponse.json(
       { error: error.message || 'Internal server error' },

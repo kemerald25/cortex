@@ -320,32 +320,31 @@ export async function generateJson(
  */
 export async function extractTextFromImage(buffer: Buffer): Promise<string> {
   try {
-    const base64Image = buffer.toString('base64');
-    
-    // Auto-agree to terms just in case this is the first time the token is using Llama 3.2 Vision
-    try {
-      await callCloudflareAi('@cf/meta/llama-3.2-11b-vision-instruct', { prompt: 'agree' });
-    } catch (e) {
-      // Ignore errors if already agreed or if call fails due to invalid parameters for already agreed tokens
-    }
+    const runOcr = async () => {
+      return await callCloudflareAi('@cf/meta/llama-3.2-11b-vision-instruct', {
+        messages: [
+          {
+            role: 'user',
+            content: 'Transcribe all handwritten and typed text from this image as accurately as possible. Output only the transcribed text, maintaining paragraphs and formatting. Do not include markdown code block formatting (like ```) or any greeting, explanation, or conversational commentary.'
+          }
+        ],
+        image: Array.from(buffer)
+      });
+    };
 
-    const result = await callCloudflareAi('@cf/meta/llama-3.2-11b-vision-instruct', {
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: 'Transcribe all handwritten and typed text from this image as accurately as possible. Output only the transcribed text, maintaining paragraphs and formatting. Do not include markdown code block formatting (like ```) or any greeting, explanation, or conversational commentary.'
-            },
-            {
-              type: 'image',
-              image: base64Image
-            }
-          ]
-        }
-      ]
-    });
+    let result;
+    try {
+      result = await runOcr();
+    } catch (err: any) {
+      // If failed (e.g. because license terms not agreed to yet), try to agree and retry once
+      console.warn('OCR model run failed. Attempting to agree to license terms and retry...', err.message);
+      try {
+        await callCloudflareAi('@cf/meta/llama-3.2-11b-vision-instruct', { prompt: 'agree' });
+        result = await runOcr();
+      } catch (retryErr) {
+        throw err; // throw the original error if retry also fails
+      }
+    }
 
     const response = result?.response || '';
     return typeof response === 'string' ? response.trim() : JSON.stringify(response);
