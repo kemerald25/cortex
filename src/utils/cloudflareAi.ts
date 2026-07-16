@@ -322,12 +322,7 @@ export async function extractTextFromImage(buffer: Buffer): Promise<string> {
   try {
     const runOcr = async () => {
       return await callCloudflareAi('@cf/meta/llama-3.2-11b-vision-instruct', {
-        messages: [
-          {
-            role: 'user',
-            content: 'Transcribe all handwritten and typed text from this image as accurately as possible. Output only the transcribed text, maintaining paragraphs and formatting. Do not include markdown code block formatting (like ```) or any greeting, explanation, or conversational commentary.'
-          }
-        ],
+        prompt: 'Transcribe all handwritten and typed text from this image as accurately as possible. Output only the transcribed text, maintaining paragraphs and formatting. Do not include markdown code block formatting (like ```) or any greeting, explanation, or conversational commentary.',
         image: Array.from(buffer)
       });
     };

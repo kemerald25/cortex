@@ -206,6 +206,42 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
     }
   };
 
+  // Delete a study material
+  const handleDeleteMaterial = async (materialId: string, filePath: string | null) => {
+    if (!confirm('Are you sure you want to delete this study material? This will also delete all associated chunks and flashcards/content generated from it.')) {
+      return;
+    }
+
+    try {
+      // 1. Delete associated chunks
+      await supabase
+        .from('chunks')
+        .delete()
+        .eq('material_id', materialId);
+
+      // 2. Delete file from storage
+      if (filePath) {
+        await supabase.storage
+          .from('materials')
+          .remove([filePath]);
+      }
+
+      // 3. Delete material record
+      const { error } = await supabase
+        .from('materials')
+        .delete()
+        .eq('id', materialId);
+
+      if (error) throw error;
+
+      // 4. Update local state
+      setMaterials((prev) => prev.filter((m) => m.id !== materialId));
+    } catch (err: any) {
+      console.error(err);
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
   // Trigger AI topic extraction
   const handleExtractTopics = async () => {
     setExtractingTopics(true);
@@ -462,15 +498,24 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                         </div>
                       </div>
                     </div>
-                    {mat.status === 'failed' && (
+                    <div className="flex items-center gap-2">
+                      {mat.status === 'failed' && (
+                        <button
+                          onClick={() => handleRetry(mat.id)}
+                          className="px-2.5 py-1 bg-rose-950 hover:bg-rose-900/70 border border-rose-900/40 text-rose-350 hover:text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-sm"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 text-rose-450" />
+                          <span>Retry</span>
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleRetry(mat.id)}
-                        className="px-2.5 py-1 bg-rose-950 hover:bg-rose-900/70 border border-rose-900/40 text-rose-350 hover:text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-sm"
+                        onClick={() => handleDeleteMaterial(mat.id, mat.file_path)}
+                        className="p-1.5 bg-slate-800 hover:bg-rose-950 hover:text-rose-400 hover:border-rose-900/50 border border-slate-750 text-slate-400 rounded-lg transition-all flex items-center justify-center shadow-sm"
+                        title="Delete material"
                       >
-                        <RefreshCw className="w-3.5 h-3.5 text-rose-450" />
-                        <span>Retry</span>
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    )}
+                    </div>
                   </div>
                 ))}
               </div>
