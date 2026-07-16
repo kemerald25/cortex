@@ -51,7 +51,29 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
       .select('*')
       .eq('course_id', courseId)
       .order('created_at', { ascending: false });
-    setMaterials(mats || []);
+
+    // Clean up any stale "extracting" materials (older than 2 minutes)
+    const cleanedMats = mats ? await Promise.all(mats.map(async (mat) => {
+      if (mat.status === 'extracting') {
+        const createdTime = new Date(mat.created_at).getTime();
+        const now = new Date().getTime();
+        const durationSeconds = (now - createdTime) / 1000;
+        if (durationSeconds > 120) {
+          try {
+            await supabase
+              .from('materials')
+              .update({ status: 'failed' })
+              .eq('id', mat.id);
+            return { ...mat, status: 'failed' };
+          } catch (dbErr) {
+            console.error('Failed to update stuck material to failed:', dbErr);
+          }
+        }
+      }
+      return mat;
+    })) : [];
+
+    setMaterials(cleanedMats);
 
     // Fetch confirmed topics
     const { data: tops } = await supabase
