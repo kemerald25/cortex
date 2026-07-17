@@ -87,7 +87,7 @@ CRITICAL DIRECTIVE: UPDATE STUDY NOTE ON REQUEST
     { "term": "Name of Term", "definition": "Direct, recall-friendly explanation of the term." }
   ],
   "process_logic": "Step-by-step logic, stages, workflow, or architectural layers of the concept, written in clean markdown list format.",
-  "formula": "Relevant mathematical equations, formulas, or syntax blocks, or null if none apply.",
+  "formula": "Relevant mathematical equations, formulas, or syntax blocks. If the topic involves calculations or quantitative processes but the source material does not show a specific mathematical formula to use (and instead describes a calculation process or steps), you MUST construct a proper step-by-step calculation guide detailing how to perform the math (written in clear sequential LaTeX statements, e.g., \"\\\\text{Step 1: Calculate Net Rent } = \\\\text{ Gross Rent } - \\\\text{ Outgoings } \\\\\\\\ \\\\text{Step 2: Multiply by YP...}\"), and place this step-by-step guide in this field. Otherwise, null.",
   "exam_angles": "Common exam questions, key trap points, and advice on how to structure answers to get maximum marks."
 }
 
@@ -114,12 +114,51 @@ ${message}`;
     // 7. Parse note update if present
     let updatedNote = null;
     let cleanAnswer = answer;
-    const jsonBlockRegex = /```update-note-json\s*([\s\S]*?)\s*```/;
-    const match = answer.match(jsonBlockRegex);
 
-    if (match) {
-      const jsonStr = match[1].trim();
+    let jsonStr = null;
+    let matchedRegex: any = null;
+
+    const updateBlockRegex = /```update-note-json\s*([\s\S]*?)\s*```/;
+    const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/;
+    const genericBlockRegex = /```\s*([\s\S]*?)\s*```/;
+
+    const updateMatch = answer.match(updateBlockRegex);
+    const jsonMatch = answer.match(jsonBlockRegex);
+    const genericMatch = answer.match(genericBlockRegex);
+
+    if (updateMatch) {
+      jsonStr = updateMatch[1];
+      matchedRegex = updateBlockRegex;
+    } else if (jsonMatch && jsonMatch[1].includes("core_idea")) {
+      jsonStr = jsonMatch[1];
+      matchedRegex = jsonBlockRegex;
+    } else if (genericMatch && genericMatch[1].includes("core_idea")) {
+      jsonStr = genericMatch[1];
+      matchedRegex = genericBlockRegex;
+    } else if (answer.includes("core_idea") && answer.includes("key_definitions")) {
+      const startIdx = answer.indexOf('{');
+      const endIdx = answer.lastIndexOf('}');
+      if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+        jsonStr = answer.substring(startIdx, endIdx + 1);
+        matchedRegex = /\{[\s\S]*\}/;
+      }
+    }
+
+    if (jsonStr) {
+      jsonStr = jsonStr.trim();
       try {
+        if (jsonStr.startsWith('```')) {
+          jsonStr = jsonStr.replace(/^```[a-zA-Z-]*\n?/, '').replace(/\n?```$/, '').trim();
+        }
+
+        const firstBrace = jsonStr.indexOf('{');
+        const lastBrace = jsonStr.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1) {
+          jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+        }
+
+        jsonStr = jsonStr.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+
         const noteJson = JSON.parse(jsonStr);
         let processLogic = noteJson.process_logic || noteJson.process || noteJson.logic || noteJson.workflow || '';
         if (Array.isArray(processLogic)) {
@@ -172,8 +211,12 @@ ${message}`;
         console.error('Failed to parse update-note-json from assistant response:', jsonErr);
       }
 
-      // Strip the raw JSON block from the chat reply so the user doesn't see it in the bubble
-      cleanAnswer = answer.replace(jsonBlockRegex, '').trim();
+      if (matchedRegex) {
+        cleanAnswer = answer.replace(matchedRegex, '').trim();
+      } else {
+        cleanAnswer = answer.replace(/\{[\s\S]*?\}/g, '').trim();
+      }
+      cleanAnswer = cleanAnswer.replace(/```[a-zA-Z-]*\s*```/g, '').trim();
       if (!cleanAnswer) {
         cleanAnswer = "I have successfully updated the study note with your requested changes.";
       }

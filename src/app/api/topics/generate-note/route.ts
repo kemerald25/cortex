@@ -27,6 +27,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Topic not found' }, { status: 404 });
     }
 
+    // Fetch recent chat history to preserve manual corrections/feedback
+    const { data: chatMessages } = await supabase
+      .from('chat_messages')
+      .select('role, content')
+      .eq('topic_id', topicId)
+      .order('created_at', { ascending: true })
+      .limit(20);
+
+    let correctionsContext = '';
+    if (chatMessages && chatMessages.length > 0) {
+      correctionsContext += "--- RECENT CHAT MESSAGES & USER CORRECTIONS TO PRESERVE ---\n";
+      chatMessages.forEach((msg: any) => {
+        const roleName = msg.role === 'user' ? 'User' : 'Assistant';
+        const cleanedContent = msg.content.replace(/```(?:update-note-json|json)?[\s\S]*?```/g, '').trim();
+        if (cleanedContent) {
+          correctionsContext += `[${roleName}]: ${cleanedContent}\n`;
+        }
+      });
+      correctionsContext += "\n";
+    }
+
     // Fetch chunks associated with this topic, ordering by created_at desc to prioritize latest uploads
     const { data: chunks, error: chunksError } = await supabase
       .from('chunks')
@@ -79,6 +100,9 @@ export async function POST(request: NextRequest) {
     const systemPrompt = `You are Cortex, an expert academic planner and note writer. Your goal is to write a highly structured, exam-oriented study Note for the topic: "${topic.title}".
 Write this note for a student who needs to recall and reproduce these concepts in an exam hall. Keep it extremely concise, focused, and high-impact. Do not include passive filler text.
 
+CRITICAL DIRECTIVE: PRESERVE CHAT CORRECTIONS
+- If the userPrompt includes a "RECENT CHAT MESSAGES & USER CORRECTIONS TO PRESERVE" section, you MUST apply and preserve all corrections, fixes, and spelling/wording updates requested by the student in that history when generating the note.
+
 CRITICAL: Your response MUST be a valid JSON object matching the schema below.
 - Both "process_logic" and "exam_angles" are STRICTLY MANDATORY. Under no circumstances should they be empty or null. If the source material does not explicitly define a step-by-step process or exam angles, you MUST synthesize and write them based on academic best practices for this topic.
 - "key_definitions" MUST contain between 3 to 5 items. Do NOT list more than 5 key terms.
@@ -98,7 +122,7 @@ FORMULAS & MATH SYMBOLS INSTRUCTION:
   - DO NOT use unescaped backslashes before plain words (e.g. never write "\\value" or "\\Rent" as they are invalid LaTeX commands that will break rendering).
   - Use "$ ... $" for inline math inside text fields.
   - Use "$$ ... $$" for block math equations inside text fields.
-  - The "formula" field MUST contain the primary formula/equation/syntax block exactly as extracted from the source material (written in LaTeX or code notation, without surrounding "$" or "$$"), or null if none apply.
+  - The "formula" field MUST contain the primary formula/equation/syntax block exactly as extracted from the source material (written in LaTeX or code notation, without surrounding "$" or "$$"). If the topic involves calculations or quantitative processes but the source material does not show a specific mathematical formula to use (and instead describes a calculation process or steps), you MUST construct a proper step-by-step calculation guide detailing how to perform the math (written in clear sequential LaTeX statements, e.g., "\\text{Step 1: Calculate Net Rent } = \\text{ Gross Rent } - \\text{ Outgoings } \\\\ \\text{Step 2: Multiply by YP...}"), and place this step-by-step guide in the "formula" field. If none apply, set to null.
 
 Schema:
 {
@@ -117,7 +141,9 @@ Here is the source material text for this topic:
 ---
 ${sourceText.substring(0, 18000)}
 ---
-Generate the structured Note.`;
+
+${correctionsContext}
+Generate the structured Note. Make sure to strictly apply and preserve any previous corrections and instructions listed in the 'RECENT CHAT MESSAGES & USER CORRECTIONS TO PRESERVE' section above.`;
 
     const noteJson = await generateJson(systemPrompt, userPrompt);
     console.log('AI noteJson parsed result:', JSON.stringify(noteJson, null, 2));
