@@ -197,7 +197,7 @@ export async function generateJson(
     return result;
   };
 
-  // Helper to escape raw, unescaped newlines within JSON string property values
+  // Helper to escape raw, unescaped newlines and control characters within JSON string property values
   const escapeRawNewlinesInStrings = (str: string) => {
     let result = '';
     let inString = false;
@@ -219,17 +219,31 @@ export async function generateJson(
         result += char;
         continue;
       }
-      if (inString && (char === '\n' || char === '\r')) {
+      if (inString) {
         if (char === '\n') {
           result += '\\n';
-        } else if (char === '\r') {
-          if (str[i + 1] === '\n') {
-            // Let the subsequent \n handle the replacement
-          } else {
-            result += '\\n';
-          }
+          continue;
         }
-        continue;
+        if (char === '\r') {
+          if (str[i + 1] === '\n') {
+            // let the subsequent \n handle it
+          } else {
+            result += '\\r';
+          }
+          continue;
+        }
+        if (char === '\t') {
+          result += '\\t';
+          continue;
+        }
+        if (char === '\f') {
+          result += '\\f';
+          continue;
+        }
+        if (char === '\b') {
+          result += '\\b';
+          continue;
+        }
       }
       result += char;
     }
