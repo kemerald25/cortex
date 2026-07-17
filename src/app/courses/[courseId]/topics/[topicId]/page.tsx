@@ -604,6 +604,9 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
       if (!response.ok) throw new Error(res.error || 'Failed to chat');
 
       setMessages(prev => [...prev.filter(m => m.id !== tempUserMsg.id), res.message.userMsg || tempUserMsg, res.message]);
+      if (res.updatedNote) {
+        setNote(res.updatedNote);
+      }
     } catch (err: any) {
       alert(`Chat error: ${err.message}`);
     } finally {
