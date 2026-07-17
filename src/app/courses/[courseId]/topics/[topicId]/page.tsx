@@ -106,7 +106,7 @@ function RenderTextWithMath({ text }: { text: string }) {
   if (!text) return null;
 
   const parts: { type: 'text' | 'inline-math' | 'block-math'; content: string }[] = [];
-  const regex = /(\$\$.*?\$\$|\$.*?\$)/g;
+  const regex = /(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/g;
   const tokens = text.split(regex);
 
   tokens.forEach((token) => {
