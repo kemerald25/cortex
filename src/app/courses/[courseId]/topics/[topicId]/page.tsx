@@ -157,8 +157,18 @@ function MathFormulaRenderer({ formula }: { formula: string }) {
   }
 
   return (
-    <div className="p-6 bg-slate-950 border border-slate-900 rounded-2xl flex flex-col items-center justify-center min-h-[80px] overflow-x-auto">
-      <MathRenderer math={formula} block={true} />
+    <div className="p-5 bg-slate-950 border border-slate-900 rounded-2xl w-full text-center text-[3.2vw] sm:text-sm md:text-base min-h-[70px] overflow-x-auto">
+      <style>{`
+        .katex-display > .katex {
+          white-space: normal !important;
+        }
+        .katex-display > .katex > .katex-html {
+          display: inline !important;
+        }
+      `}</style>
+      <div className="inline-block min-w-full text-center align-middle">
+        <MathRenderer math={formula} block={true} />
+      </div>
     </div>
   );
 }
