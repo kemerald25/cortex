@@ -804,6 +804,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                   <input
                     type="file"
                     required
+                    multiple
                     accept=".pdf,.docx,image/*"
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                       if (e.target.files && e.target.files.length > 0) {
@@ -819,8 +820,10 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                   />
                   <div className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-400 text-xs font-semibold text-center border-dashed hover:border-slate-700 transition-all overflow-hidden text-ellipsis whitespace-nowrap">
                     {selectedTopicFiles.length > 0
-                      ? selectedTopicFiles[0].name
-                      : 'Select PDF/DOCX/Photo'}
+                      ? selectedTopicFiles.length === 1
+                        ? selectedTopicFiles[0].name
+                        : `${selectedTopicFiles.length} files selected`
+                      : 'Select PDF/DOCX/Photos'}
                   </div>
                 </div>
 
