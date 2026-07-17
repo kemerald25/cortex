@@ -156,32 +156,40 @@ function MathFormulaRenderer({ formula }: { formula: string }) {
     );
   }
 
+  const lines = formula.split('\n');
+  const hasDelimiters = formula.includes('$$') || formula.includes('$');
+
   return (
-    <div className="p-5 bg-slate-950 border border-slate-900 rounded-2xl w-full text-center text-xs sm:text-sm md:text-base h-auto overflow-visible">
+    <div className="p-5 bg-slate-950 border border-slate-900 rounded-2xl w-full text-left text-xs sm:text-sm md:text-base h-auto overflow-visible space-y-3.5">
       <style>{`
         .katex-display {
           margin: 0.5em 0 !important;
-          overflow-x: visible !important;
-          overflow-y: visible !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          scrollbar-width: none; /* Firefox */
+        }
+        .katex-display::-webkit-scrollbar {
+          display: none; /* Safari and Chrome */
         }
         .katex-display > .katex {
-          white-space: normal !important;
           text-align: center !important;
         }
-        .katex-display > .katex > .katex-html {
-          display: inline !important;
-          white-space: normal !important;
-        }
-        .katex-display > .katex > .katex-html > .base {
-          display: inline-block !important;
-          white-space: normal !important;
-          margin-top: 4px;
-          margin-bottom: 4px;
-        }
       `}</style>
-      <div className="inline-block min-w-full text-center align-middle">
-        <MathRenderer math={formula} block={true} />
-      </div>
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
+        return (
+          <div key={idx} className="w-full text-slate-300 leading-relaxed">
+            {hasDelimiters ? (
+              <RenderTextWithMath text={line} />
+            ) : (
+              <div className="text-center">
+                <MathRenderer math={line} block={true} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
