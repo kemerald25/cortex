@@ -27,17 +27,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Topic not found' }, { status: 404 });
     }
 
-    // Fetch chunks associated with this topic
+    // Fetch chunks associated with this topic, ordering by created_at desc to prioritize latest uploads
     const { data: chunks, error: chunksError } = await supabase
       .from('chunks')
       .select('content')
       .eq('topic_id', topicId)
-      .limit(25); // pull enough context but stay safe on token limits
+      .order('created_at', { ascending: false })
+      .limit(35); // pull enough context but stay safe on token limits
 
     if (chunksError) throw chunksError;
 
     let sourceText = chunks && chunks.length > 0
-      ? chunks.map((c: any) => c.content).join('\n\n')
+      ? chunks.slice().reverse().map((c: any) => c.content).join('\n\n')
       : '';
 
     // Fallback: If no chunks are linked directly to this topic_id,

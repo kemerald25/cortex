@@ -7,7 +7,8 @@ import { calculateSM2 } from '@/utils/srs';
 import katex from 'katex';
 import { 
   Sparkles, MessageSquare, Plus, CheckCircle, Image, 
-  Trash2, HelpCircle, Eye, EyeOff, RotateCw, X, ChevronRight, Send, ChevronLeft
+  Trash2, HelpCircle, Eye, EyeOff, RotateCw, X, ChevronRight, Send, ChevronLeft,
+  Upload
 } from 'lucide-react';
 
 const formatListText = (val: any): string[] => {
@@ -197,6 +198,42 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
   const [sendingMessage, setSendingMessage] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
+  // Topic specific materials states
+  const [topicMaterials, setTopicMaterials] = useState<any[]>([]);
+  const [topicUploading, setTopicUploading] = useState(false);
+  const [selectedTopicFiles, setSelectedTopicFiles] = useState<File[]>([]);
+  const [topicMaterialName, setTopicMaterialName] = useState('');
+  const [topicMaterialType, setTopicMaterialType] = useState('notes');
+
+  async function loadTopicMaterials(tId: string) {
+    try {
+      const { data: chunks, error } = await supabase
+        .from('chunks')
+        .select('material_id')
+        .eq('topic_id', tId);
+      
+      if (error || !chunks) return;
+      
+      const materialIds = Array.from(new Set(chunks.map(c => c.material_id).filter(Boolean)));
+      if (materialIds.length === 0) {
+        setTopicMaterials([]);
+        return;
+      }
+      
+      const { data: mats } = await supabase
+        .from('materials')
+        .select('*')
+        .in('id', materialIds)
+        .order('created_at', { ascending: false });
+        
+      if (mats) {
+        setTopicMaterials(mats);
+      }
+    } catch (err) {
+      console.error('Failed to load topic materials:', err);
+    }
+  }
+
   async function loadTopicData() {
     setLoading(true);
     // Fetch Topic
@@ -231,6 +268,9 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
         .eq('topic_id', topicId)
         .order('created_at', { ascending: true });
       setFlashcards(cards || []);
+
+      // Fetch topic materials
+      await loadTopicMaterials(topicId);
     }
     setLoading(false);
   }
@@ -276,6 +316,79 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
       alert(`Error: ${err.message}`);
     } finally {
       setGeneratingNote(false);
+    }
+  };
+
+  const handleTopicUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedTopicFiles.length === 0 || !topic) return;
+
+    setTopicUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      for (let i = 0; i < selectedTopicFiles.length; i++) {
+        const file = selectedTopicFiles[i];
+        const fileExt = file.name.split('.').pop();
+        const storagePath = `${user.id}/${Date.now()}_topic_${i}.${fileExt}`;
+
+        // 1. Upload to Supabase Storage
+        const { error: storageError } = await supabase.storage
+          .from('materials')
+          .upload(storagePath, file);
+
+        if (storageError) throw storageError;
+
+        // Determine name
+        let name = topicMaterialName.trim();
+        if (!name) {
+          name = file.name.split('.').slice(0, -1).join('.');
+        } else if (selectedTopicFiles.length > 1) {
+          name = `${topicMaterialName} - ${file.name.split('.').slice(0, -1).join('.')}`;
+        }
+
+        // 2. Insert record in materials table
+        const { data: matRecord, error: dbError } = await supabase
+          .from('materials')
+          .insert({
+            course_id: courseId,
+            name: name,
+            type: topicMaterialType,
+            file_path: storagePath,
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (dbError || !matRecord) throw dbError || new Error(`Failed to create material record`);
+
+        // 3. Trigger OCR/Text Extraction API route
+        const extractRes = await fetch('/api/materials/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            materialId: matRecord.id,
+            topicId: topicId
+          }),
+        });
+        
+        if (!extractRes.ok) {
+          const errData = await extractRes.json();
+          throw new Error(errData.error || 'Failed to extract material');
+        }
+      }
+
+      // Reset
+      setTopicMaterialName('');
+      setSelectedTopicFiles([]);
+      await loadTopicMaterials(topicId);
+      alert('Material uploaded and processed successfully! You can now regenerate the note to include the new details.');
+    } catch (err: any) {
+      console.error(err);
+      alert(`Upload failed: ${err.message}`);
+    } finally {
+      setTopicUploading(false);
     }
   };
 
@@ -672,6 +785,88 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
               </button>
             </div>
           )}
+
+          {/* Topic Specific Materials Section */}
+          <div className="mt-8 bg-slate-900/30 border border-slate-900 p-5 rounded-2xl space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Upload className="w-4 h-4 text-indigo-400" />
+                <span>Upload Topic Material</span>
+              </h3>
+              <p className="text-[10px] text-slate-400">
+                Have missing details? Upload a specific textbook section, slide deck, or note page for this topic, then regenerate.
+              </p>
+            </div>
+
+            <form onSubmit={handleTopicUpload} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative">
+                  <input
+                    type="file"
+                    required
+                    accept=".pdf,.docx,image/*"
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        const filesArray = Array.from(e.target.files) as File[];
+                        setSelectedTopicFiles(filesArray);
+                        if (filesArray.length === 1 && !topicMaterialName) {
+                          const base = filesArray[0].name.split('.').slice(0, -1).join('.');
+                          setTopicMaterialName(base);
+                        }
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-400 text-xs font-semibold text-center border-dashed hover:border-slate-700 transition-all overflow-hidden text-ellipsis whitespace-nowrap">
+                    {selectedTopicFiles.length > 0
+                      ? selectedTopicFiles[0].name
+                      : 'Select PDF/DOCX/Photo'}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={topicUploading || selectedTopicFiles.length === 0}
+                  className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-600 disabled:bg-indigo-900/20 disabled:text-slate-500 text-white font-bold rounded-xl text-xs transition-all flex justify-center items-center gap-1.5"
+                >
+                  {topicUploading ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Upload & Process</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* List of topic materials */}
+            {topicMaterials.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-slate-900">
+                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Uploaded Topic Materials</h4>
+                <div className="space-y-1.5">
+                  {topicMaterials.map((mat) => (
+                    <div key={mat.id} className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-xl border border-slate-900 text-xs">
+                      <span className="text-slate-300 font-medium truncate max-w-[200px]">{mat.name}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                        mat.status === 'completed' 
+                          ? 'bg-emerald-950/40 text-emerald-450 border border-emerald-900/30' 
+                          : mat.status === 'extracting' 
+                            ? 'bg-amber-950/40 text-amber-450 border border-amber-900/30 animate-pulse'
+                            : 'bg-rose-950/40 text-rose-455 border border-rose-900/30'
+                      }`}>
+                        {mat.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { materialId } = await request.json();
+    const { materialId, topicId } = await request.json();
     if (!materialId) {
       return NextResponse.json({ error: 'Missing materialId' }, { status: 450 });
     }
@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
           material_id: materialId,
           content: chunk,
           embedding: embedding,
+          topic_id: topicId || null,
         });
 
       if (insertChunkError) {
