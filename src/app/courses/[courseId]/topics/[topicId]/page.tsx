@@ -38,7 +38,7 @@ function formatMathText(math: string): string {
 
   let processed = math.replace(/([a-zA-Z])\\\s+([a-zA-Z])/g, '$1 $2');
   
-  const tokenRegex = /(\\[a-zA-Z]+|[{}[\]()+\-*\/=,_^]|\s+|[a-zA-Z][a-zA-Z\s]*[a-zA-Z]|[a-zA-Z]|\d+(?:\.\d+)?)/g;
+  const tokenRegex = /(\\[a-zA-Z]+|\\.|[{}[\]()+\-*\/=,_^]|\s+|[a-zA-Z][a-zA-Z\s]*[a-zA-Z]|[a-zA-Z]|\d+(?:\.\d+)?|.)/g;
   const tokens = processed.match(tokenRegex) || [processed];
   
   let inTextMode = false;
@@ -157,13 +157,26 @@ function MathFormulaRenderer({ formula }: { formula: string }) {
   }
 
   return (
-    <div className="p-5 bg-slate-950 border border-slate-900 rounded-2xl w-full text-center text-[3.2vw] sm:text-sm md:text-base min-h-[70px] overflow-x-auto">
+    <div className="p-5 bg-slate-950 border border-slate-900 rounded-2xl w-full text-center text-xs sm:text-sm md:text-base h-auto overflow-visible">
       <style>{`
+        .katex-display {
+          margin: 0.5em 0 !important;
+          overflow-x: visible !important;
+          overflow-y: visible !important;
+        }
         .katex-display > .katex {
           white-space: normal !important;
+          text-align: center !important;
         }
         .katex-display > .katex > .katex-html {
           display: inline !important;
+          white-space: normal !important;
+        }
+        .katex-display > .katex > .katex-html > .base {
+          display: inline-block !important;
+          white-space: normal !important;
+          margin-top: 4px;
+          margin-bottom: 4px;
         }
       `}</style>
       <div className="inline-block min-w-full text-center align-middle">

@@ -169,9 +169,22 @@ export async function generateJson(
           continue;
         }
         
-        // If it's a valid JSON escape: \n, \t, \r, \", or \uXXXX
+        // Check if nextChar is a valid JSON escape: \", \uXXXX, or \n, \t, \r, \b, \f
+        // BUT if it's \n, \t, \r, \b, \f followed by another letter, it's a LaTeX command (e.g. \text, \node, \right, \beta, \frac)
         const isUnicode = nextChar === 'u' && /^[0-9a-fA-F]{4}$/.test(str.substring(i + 2, i + 6));
-        if (nextChar === 'n' || nextChar === 't' || nextChar === 'r' || nextChar === '"' || isUnicode) {
+        const isNormalEscape = nextChar === '"';
+        
+        let isJsonEscape = isNormalEscape || isUnicode;
+        if (!isJsonEscape && (nextChar === 'n' || nextChar === 't' || nextChar === 'r' || nextChar === 'b' || nextChar === 'f')) {
+          const afterNextChar = str[i + 2];
+          // If the character after the escape is a letter, then it's a word/LaTeX command, not a JSON escape
+          const isNextCharPartofWord = afterNextChar && /^[a-zA-Z]$/.test(afterNextChar);
+          if (!isNextCharPartofWord) {
+            isJsonEscape = true;
+          }
+        }
+
+        if (isJsonEscape) {
           result += char;
         } else {
           result += '\\\\';

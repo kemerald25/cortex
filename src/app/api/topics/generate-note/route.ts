@@ -48,6 +48,24 @@ export async function POST(request: NextRequest) {
       correctionsContext += "\n";
     }
 
+    // Fetch existing note to preserve previous manual corrections
+    const { data: existingNote } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('topic_id', topicId)
+      .maybeSingle();
+
+    let existingNoteContext = '';
+    if (existingNote) {
+      existingNoteContext += "--- CURRENT STUDY NOTE (PRESERVE THESE MANUAL CORRECTIONS) ---\n";
+      existingNoteContext += `Core Idea: ${existingNote.core_idea}\n`;
+      existingNoteContext += `Key Definitions: ${JSON.stringify(existingNote.key_definitions, null, 2)}\n`;
+      existingNoteContext += `Process/Logic: ${existingNote.process_logic}\n`;
+      existingNoteContext += `Formula: ${existingNote.formula || 'None'}\n`;
+      existingNoteContext += `Exam Angles: ${existingNote.exam_angles}\n`;
+      existingNoteContext += "\n";
+    }
+
     // Fetch chunks associated with this topic, ordering by created_at desc to prioritize latest uploads
     const { data: chunks, error: chunksError } = await supabase
       .from('chunks')
@@ -100,7 +118,8 @@ export async function POST(request: NextRequest) {
     const systemPrompt = `You are Cortex, an expert academic planner and note writer. Your goal is to write a highly structured, exam-oriented study Note for the topic: "${topic.title}".
 Write this note for a student who needs to recall and reproduce these concepts in an exam hall. Keep it extremely concise, focused, and high-impact. Do not include passive filler text.
 
-CRITICAL DIRECTIVE: PRESERVE CHAT CORRECTIONS
+CRITICAL DIRECTIVE: PRESERVE CURRENT STUDY NOTE & CHAT CORRECTIONS
+- If a "CURRENT STUDY NOTE (PRESERVE THESE MANUAL CORRECTIONS)" section is provided in the userPrompt, you MUST preserve all definition edits, formula corrections, and textual changes exactly as they appear in the current study note. Do not revert them to the incorrect or different versions from the raw source material.
 - If the userPrompt includes a "RECENT CHAT MESSAGES & USER CORRECTIONS TO PRESERVE" section, you MUST apply and preserve all corrections, fixes, and spelling/wording updates requested by the student in that history when generating the note.
 
 CRITICAL: Your response MUST be a valid JSON object matching the schema below.
@@ -142,8 +161,10 @@ Here is the source material text for this topic:
 ${sourceText.substring(0, 18000)}
 ---
 
+${existingNoteContext}
+
 ${correctionsContext}
-Generate the structured Note. Make sure to strictly apply and preserve any previous corrections and instructions listed in the 'RECENT CHAT MESSAGES & USER CORRECTIONS TO PRESERVE' section above.`;
+Generate the structured Note. Make sure to strictly apply and preserve any previous corrections and instructions listed in the 'CURRENT STUDY NOTE (PRESERVE THESE MANUAL CORRECTIONS)' and 'RECENT CHAT MESSAGES & USER CORRECTIONS TO PRESERVE' sections above.`;
 
     const noteJson = await generateJson(systemPrompt, userPrompt);
     console.log('AI noteJson parsed result:', JSON.stringify(noteJson, null, 2));
