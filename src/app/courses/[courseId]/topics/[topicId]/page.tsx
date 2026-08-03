@@ -202,6 +202,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
   const [topic, setTopic] = useState<any>(null);
   const [activeSubTab, setActiveSubTab] = useState<'note' | 'additions' | 'flashcards'>('note');
   const [loading, setLoading] = useState(true);
+  const [allTopics, setAllTopics] = useState<any[]>([]);
 
   // Note states
   const [note, setNote] = useState<any>(null);
@@ -267,6 +268,7 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
 
   async function loadTopicData() {
     setLoading(true);
+    setActiveSubTab('note');
     // Fetch Topic
     const { data: t } = await supabase
       .from('topics')
@@ -302,6 +304,15 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
 
       // Fetch topic materials
       await loadTopicMaterials(topicId);
+
+      // Fetch all confirmed topics in this course to enable back/next navigation
+      const { data: allTops } = await supabase
+        .from('topics')
+        .select('id, title, order_index')
+        .eq('course_id', courseId)
+        .eq('is_confirmed', true)
+        .order('order_index', { ascending: true });
+      setAllTopics(allTops || []);
     }
     setLoading(false);
   }
@@ -646,6 +657,10 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
 
   const currentCard = flashcards[currentCardIndex];
 
+  const currentTopicIndex = allTopics.findIndex((t) => t.id === topicId);
+  const prevTopic = currentTopicIndex > 0 ? allTopics[currentTopicIndex - 1] : null;
+  const nextTopic = currentTopicIndex !== -1 && currentTopicIndex < allTopics.length - 1 ? allTopics[currentTopicIndex + 1] : null;
+
   return (
     <div className="space-y-6 relative pb-10">
       {/* Title */}
@@ -817,6 +832,49 @@ export default function TopicDetailsPage({ params }: { params: Promise<{ courseI
                   </>
                 )}
               </button>
+            </div>
+          )}
+
+          {/* Navigation between topics */}
+          {(prevTopic || nextTopic) && (
+            <div className="grid grid-cols-2 gap-3 pt-6 mt-4 border-t border-slate-900/60">
+              {prevTopic ? (
+                <button
+                  onClick={() => {
+                    setLoading(true);
+                    router.push(`/courses/${courseId}/topics/${prevTopic.id}`);
+                  }}
+                  className="flex flex-col items-start gap-1 p-3.5 bg-slate-900/30 hover:bg-slate-900/65 border border-slate-900 hover:border-slate-800 rounded-xl text-left transition-all group"
+                >
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                    <ChevronLeft className="w-3.5 h-3.5 text-slate-550 group-hover:text-slate-400 transition-colors" /> Previous Topic
+                  </span>
+                  <span className="text-xs font-bold text-slate-350 group-hover:text-white transition-colors line-clamp-1">
+                    {prevTopic.title}
+                  </span>
+                </button>
+              ) : (
+                <div />
+              )}
+
+              {nextTopic ? (
+                <button
+                  onClick={() => {
+                    setLoading(true);
+                    router.push(`/courses/${courseId}/topics/${nextTopic.id}`);
+                  }}
+                  className="flex flex-col items-end gap-1 p-3.5 bg-indigo-950/20 hover:bg-indigo-950/40 border border-indigo-900/30 hover:border-indigo-850/50 rounded-xl text-right transition-all group"
+                >
+                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+                    Next Topic <ChevronRight className="w-3.5 h-3.5 text-indigo-455 animate-pulse" />
+                  </span>
+                  <span className="text-xs font-bold text-indigo-250 group-hover:text-white transition-colors line-clamp-1 font-semibold">
+                    {nextTopic.title}
+                  </span>
+                </button>
+              ) : (
+                <div />
+              )}
             </div>
           )}
 
